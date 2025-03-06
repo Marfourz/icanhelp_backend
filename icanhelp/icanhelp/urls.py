@@ -16,9 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+from api.views import SignupView,UserCompetencesAPIView, InvitationViewSet
 
 
 from rest_framework import routers
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 
 from api import views
 
@@ -33,8 +36,11 @@ router.register(r'users', views.UserViewSet)
 router.register(r'users_profil', views.UserProfilViewSet)
 router.register(r'groups', views.GroupViewSet)
 router.register(r'competences', views.CompetenceViewSet)
+router.register(r'invitations', InvitationViewSet, basename="invitation")
 
-router.register(r'user_profil/competences/competences_voulues', views.UserCompetenceVoulueViewSet, basename='competences_voulues')
+
+
+#router.register(r'user_profil/competences/(?P<type>desired|personal)', views.UserCompetenceViewSet, basename='competences_voulues')
 
 # router.register(r'user/{id}/competences_voulues', views.UserCompetenceVoulueViewSet, basename='competences-voulues')
 #router.register(r'user/competences_personnelles', UserCompetencePersonnelleViewSet, basename='competences-personnelles')
@@ -43,7 +49,15 @@ router.register(r'user_profil/competences/competences_voulues', views.UserCompet
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     path('', include(router.urls)),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('api/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/signup/', SignupView.as_view(), name='signup'),
+    path('user_profil/competences/<str:type>', UserCompetencesAPIView.as_view(), name='user-competences'),
+    #path('invitations', InvitationViewSet.as_view(), name='invitations'),
+
+   
+
 ]
 
 

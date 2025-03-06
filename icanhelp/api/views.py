@@ -1,16 +1,18 @@
-from django.shortcuts import render
-
 from api.models import *
+from api.serializers import GroupSerializer, UserSerializer, CompetenceSerializer,UserProfilSerializer,DiscussionSerializer
 from django.contrib.auth.models import Group, User
+from api.models.Discussion import DiscussionState
+
 from rest_framework import permissions, viewsets
-from rest_framework.decorators import action
-
-from api.serializers import GroupSerializer, UserSerializer, CompetenceSerializer
-
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from api.serializers import UserProfilSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework import generics
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.db.models import Count
+from rest_framework.decorators import action
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -20,84 +22,23 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+# Vue API pour l'inscription avec JWT
+class SignupView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
-class UserProfilViewSet(viewsets.ModelViewSet):
-    queryset = UserProfil.objects.all()
-    serializer_class = UserProfilSerializer
-
-    @action(detail=True, methods=['post'])
-    def ajouter_competences_voulues(self, request, pk=None):
-        user = self.get_object()
-        competence_ids = request.data.get('competence_ids', []) 
-        competences = Competence.objects.filter(id__in=competence_ids)
-
-        if not competence_ids:
-            return Response({"error": "Aucune compétence fournie."}, status=400)
-        competences = Competence.objects.filter(id__in=competence_ids)
-
-        if not competences.exists():
-            return Response({"error": "Aucune compétence valide trouvée."}, status=400)
-
-        user.competences_desired.add(*competences)
-        return Response({"message": "Compétences ajoutées aux compétences voulues", "competences": [c.title for c in competences]})
-
-    @action(detail=True, methods=['post'])
-    def ajouter_competences_personnelles(self, request, pk=None):
-        user = self.get_object()
-        competence_ids = request.data.get('competence_ids', []) 
-        if not competence_ids:
-            return Response({"error": "Aucune compétence fournie."}, status=400)
-        competences = Competence.objects.filter(id__in=competence_ids)
-
-        if not competences.exists():
-            return Response({"error": "Aucune compétence valide trouvée."}, status=400)
-
-        user.competences_persornal.add(*competences)
-        return Response({"message": "Compétences ajoutées aux compétences personnelles", "competences": [c.title for c in competences]})
-    
-
-
-    @action(detail=True, methods=['delete'])
-    def supprimer_competences_voulues(self, request, pk=None):
-        """Supprime des compétences des compétences voulues d'un utilisateur."""
-        user = self.get_object()
-        competence_ids = request.data.get('competence_ids', [])
-
-        if not competence_ids:
-            return Response({"error": "Aucune compétence fournie."}, status=400)
-
-        competences = user.competences_desired.filter(id__in=competence_ids)
-
-        if not competences.exists():
-            return Response({"error": "Aucune compétence trouvée dans les compétences voulues."}, status=400)
-
-        user.competences_desired.remove(*competences)
-        return Response({
-            "message": "Compétences supprimées des compétences voulues.",
-            "competences": [c.title for c in competences]
-        }, status=200)
-    
-
-    @action(detail=True, methods=['delete'])
-    def supprimer_competences_personnelles(self, request, pk=None):
-        """Supprime des compétences des compétences personnelles d'un utilisateur."""
-        user = self.get_object()
-        competence_ids = request.data.get('competence_ids', [])
-
-        if not competence_ids:
-            return Response({"error": "Aucune compétence fournie."}, status=400)
-
-        competences = user.competences_persornal.filter(id__in=competence_ids)
-
-        if not competences.exists():
-            return Response({"error": "Aucune compétence trouvée dans les compétences personnelles."}, status=400)
-
-        user.competences_persornal.remove(*competences)
-        return Response({
-            "message": "Compétences supprimées des compétences personnelles.",
-            "competences": [c.title for c in competences]
-        }, status=200)
-
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            # Générer les tokens JWT
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "Inscription réussie !",
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh)
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserProfilViewSet(viewsets.ModelViewSet):
@@ -105,39 +46,47 @@ class UserProfilViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfilSerializer
 
 
-class UserCompetenceVoulueViewSet(viewsets.ViewSet):
-    """
-    Gère les compétences voulues d'un utilisateur :
-    - GET : Récupère les compétences voulues
-    - POST : Ajoute des compétences
-    - DELETE : Supprime des compétences
-    """
+class UserCompetencesAPIView(APIView):
 
-    def list(self, request, userprofil_pk=None):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request,  type = None):
         """Récupérer les compétences voulues"""
-        user_profil = get_object_or_404(UserProfil, pk=userprofil_pk)
-        competences = user_profil.competences_desired.all()
-        return Response({"competences": [c.nom for c in competences]})
+        user_id = request.user.id
+  
+        user_profil = get_object_or_404(UserProfil, pk=user_id)
 
-    def create(self, request, userprofil_pk=None):
+        if type == "desired":
+            competences = user_profil.competences_desired.all()
+        else:
+            competences = user_profil.competences_persornal.all()
+
+        serializer = CompetenceSerializer(competences, many = True)
+        return Response(serializer.data)
+
+    def post(self, request, type=None):
         """Ajouter des compétences voulues"""
-        user_profil = get_object_or_404(UserProfil, pk=userprofil_pk)
+        user_profil = get_object_or_404(UserProfil, pk=request.user.id)
         competence_ids = request.data.get('competence_ids', [])
 
         if not competence_ids:
             return Response({"error": "Aucune compétence fournie."}, status=status.HTTP_400_BAD_REQUEST)
 
         competences = Competence.objects.filter(id__in=competence_ids)
-        user_profil.competences_desired.add(*competences)
+
+        if type == "desired":
+            user_profil.competences_desired.add(*competences)
+        else:
+            user_profil.competences_persornal.add(*competences)
 
         return Response({
             "message": "Compétences ajoutées.",
-            "competences": [c.nom for c in competences]
+            "competences": [c.title for c in competences]
         })
 
-    def destroy(self, request, userprofil_pk=None):
+    def delete(self, request, type = None):
         """Supprimer des compétences voulues"""
-        user_profil = get_object_or_404(UserProfil, pk=userprofil_pk)
+        user_profil = get_object_or_404(UserProfil, pk=request.user.id)
         competence_ids = request.data.get('competence_ids', [])
 
         if not competence_ids:
@@ -147,11 +96,18 @@ class UserCompetenceVoulueViewSet(viewsets.ViewSet):
         if not competences.exists():
             return Response({"error": "Aucune compétence trouvée."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user_profil.competences_desired.remove(*competences)
+        if type == "desired":
+            user_profil.competences_desired.remove(*competences)
+        else:
+            user_profil.competences_persornal.remove(*competences)
+
+  
         return Response({
             "message": "Compétences supprimées.",
-            "competences": [c.nom for c in competences]
+            "competences": [c.title for c in competences]
         })
+    
+
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -170,6 +126,101 @@ class CompetenceViewSet(viewsets.ModelViewSet):
     queryset = Competence.objects.all().order_by('created')
     serializer_class = CompetenceSerializer
     permission_classes = []
+
+    def get_queryset(self):
+
+        type = self.request.GET.get('type')
+        limit = self.request.GET.get('limit')
+
+        if limit:
+            limit =  int(self.request.GET.get('limit')) 
+        
+        if type is None:
+            query = Competence.objects.all()
+        else:
+            if type == 'desired':
+                query = Competence.objects.filter(user_desired__isnull=False).annotate(
+                    total = Count("user_desired")
+                ).order_by("-total").distinct()[:limit]
+            else:
+                query = Competence.objects.filter(user_personal__isnull=False).annotate(
+                    total = Count("user_personal")
+                ).order_by("-total").distinct()[:limit]
+
+        return query
+    
+
+
+class InvitationViewSet(viewsets.ModelViewSet):
+
+    queryset = Discussion.objects.all()
+    serializer_class = DiscussionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+    
+    @action(detail=True, methods = ['post'])     
+    def accept(self, request, pk = None):
+        
+        # discussion_id = request.data.get("discussion_id")
+        discussion = get_object_or_404(Discussion, pk=pk)
+
+        print(discussion.receiver, request.user)
+        if discussion.receiver.id != request.user.id:
+              return Response({"message": "Vous n'êtes pas autorisé à accepter cette invitation."}, status=status.HTTP_403_FORBIDDEN)
+        
+        discussion.state = DiscussionState.ACCEPTED
+        
+        discussion.save()
+        serializer = DiscussionSerializer(discussion, many =False, context={'request': request})
+
+        return Response(serializer.data)
+    
+    @action(detail=True, methods = ['post'])     
+    def reject(self, request, pk = None):
+        
+        # discussion_id = request.data.get("discussion_id")
+        discussion = get_object_or_404(Discussion, pk=pk)
+
+        if discussion.receiver.id != request.user.id:
+              return Response({"message": "Vous n'êtes pas autorisé à rejeter cette invitation."}, status=status.HTTP_403_FORBIDDEN)
+        discussion.state = DiscussionState.REJECTED
+        
+        discussion.save()
+        serializer = DiscussionSerializer(discussion, many =False, context={'request': request})
+
+        return Response(serializer.data)
+
+   
+    def get_queryset(self):
+        user = self.request.user.id 
+        type = self.request.GET.get("type")
+
+        invitations = Discussion.objects.filter(state = DiscussionState.PENDING)
+
+        if type == "send":
+            invitations = invitations.filter(createdBy = user)
+        elif type == "receive":
+            invitations = invitations.filter(receiver = user)
+        
+
+        return invitations
+    
+    def post(self, request):
+       
+         receiver_id = request.data.get("receiver_id")
+         receiver = get_object_or_404(UserProfil, pk=receiver_id)
+         sender = get_object_or_404(UserProfil, pk=request.user.id)
+         discussion = Discussion()
+         discussion.receiver = receiver
+         discussion.createdBy = sender
+         
+         return Response(discussion.save())
+
+
+         
+
+        
 
 
 # class DiscussionViewSet(viewsets.ModelViewSet):

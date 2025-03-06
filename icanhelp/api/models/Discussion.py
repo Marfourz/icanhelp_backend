@@ -1,11 +1,12 @@
 from django.db import models
 from api.models.UserProfil import UserProfil
 
-STATES = [
-        ('PENDING', 'En attente'),
-        ('ACCEPT', 'Accepté'),
-        ('REJECT', 'Refusé'),
-]
+
+
+class DiscussionState(models.TextChoices):
+    PENDING = "PENDING", "En attente"
+    ACCEPTED = "ACCEPT", "Accepté"
+    REJECTED = "REJECT", "Refusé"
 
 
 class Discussion(models.Model):
@@ -17,11 +18,15 @@ class Discussion(models.Model):
         UserProfil, related_name="createDiscussions", blank=False, on_delete=models.CASCADE,
     )
 
-    user2 = models.ForeignKey(
+    receiver = models.ForeignKey(
         UserProfil, related_name="receivedDiscussions", blank=False, on_delete=models.CASCADE
     )
 
-    state = models.CharField(max_length=20, choices=STATES, default='PENDING')
+    state = models.CharField(
+        max_length=20,
+        choices=DiscussionState.choices, 
+        default=DiscussionState.PENDING
+    )
 
 
     class Meta:

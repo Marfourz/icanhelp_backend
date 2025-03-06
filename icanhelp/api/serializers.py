@@ -22,7 +22,7 @@ class UserProfilSerializer(serializers.HyperlinkedModelSerializer):
 class DiscussionSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Discussion
-        fields = '__all__'
+        fields = ['id', 'receiver', 'createdBy', 'state']
 
 
 class MessageSerializer(serializers.HyperlinkedModelSerializer):
@@ -33,4 +33,4 @@ class MessageSerializer(serializers.HyperlinkedModelSerializer):
 class CompetenceSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Competence
-        fields = '__all__'
+        fields = ['id', 'title']
