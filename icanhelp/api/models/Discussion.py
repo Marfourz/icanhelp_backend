@@ -2,15 +2,8 @@ from django.db import models
 from api.models.UserProfil import UserProfil
 
 
-
-class DiscussionState(models.TextChoices):
-    PENDING = "PENDING", "En attente"
-    ACCEPTED = "ACCEPT", "Accepté"
-    REJECTED = "REJECT", "Refusé"
-
-
 class Discussion(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
 
     name = models.CharField(max_length=100,default='')
     
@@ -18,16 +11,13 @@ class Discussion(models.Model):
         UserProfil, related_name="createDiscussions", blank=False, on_delete=models.CASCADE,
     )
 
-    receiver = models.ForeignKey(
-        UserProfil, related_name="receivedDiscussions", blank=False, on_delete=models.CASCADE
+    users = models.ManyToManyField(
+        UserProfil, blank=True, related_name="discussions"
     )
 
-    state = models.CharField(
-        max_length=20,
-        choices=DiscussionState.choices, 
-        default=DiscussionState.PENDING
+    lastMessage = models.ForeignKey(
+        'api.Message', blank=True, on_delete=models.SET_NULL,null=True,related_name="discussion_of_last"
     )
-
 
     class Meta:
-        ordering = ['created']
+        ordering = ['createdAt']

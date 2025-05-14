@@ -27,8 +27,10 @@ SECRET_KEY = 'django-insecure-c2b3@f00ta9g$%9dn3#!t+b0!_(lj!ri*!ab&$4da*b&580uj*
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "657a-46-193-67-60.ngrok-free.app",
-    "localhost"
+    # "5d56-46-193-67-60.ngrok-free.app",
+    "localhost",
+    "f2b1-46-193-67-60.ngrok-free.app",
+    "5040-46-193-67-60.ngrok-free.app"
 ]
 
 
@@ -36,6 +38,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,9 +48,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'api',
+    'corsheaders',
+    "rest_live"
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -55,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 ]
 
 
@@ -145,3 +152,18 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+CORS_ORIGIN_ALLOW_ALL = True
+
+ASGI_APPLICATION = "icanhelp.asgi.application"
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+DJANGO_SETTINGS_MODULE = 'icanhelp.settings'
+
+
