@@ -1,0 +1,7 @@
+djangorestframework
+markdown
+django-filter
+daphne
+channels
+django-cors-headers
+djangorestframework-simplejwt
