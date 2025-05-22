@@ -43,6 +43,9 @@ class UserProfilSerializer(serializers.ModelSerializer):
 
 class DiscussionSerializer(serializers.ModelSerializer):
     lastMessage = serializers.SerializerMethodField()
+    lastOpenAt = serializers.DateTimeField(read_only=True)
+    nbMessagesNotRead = serializers.IntegerField(read_only=True)
+
     class Meta:
         depth = 2
         model = Discussion

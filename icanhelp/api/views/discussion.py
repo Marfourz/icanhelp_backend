@@ -1,4 +1,4 @@
-from api.models import UserProfil
+
 from rest_framework import viewsets, status,permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,6 +8,12 @@ from api.serializers import DiscussionSerializer, MessageSerializer
 from api.mixins import UserProfilMixin
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from datetime import datetime
+from django.db.models import OuterRef, Subquery, Count, Q
+from django.db.models.functions import Coalesce
+
+
+from api.models import UserDiscussionMetaData
 
 
 class DiscussionViewSet(UserProfilMixin, viewsets.ModelViewSet):
@@ -16,15 +22,36 @@ class DiscussionViewSet(UserProfilMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """ Récupérer uniquement les discussions où l'utilisateur est impliqué """
-        return Discussion.objects.filter(users=self.get_user_profil()).order_by('-createdAt')
 
+        user_profil = self.get_user_profil()    
+        # Sous-requête pour récupérer la dernière ouverture de la discussion par l'utilisateur
+        discussions = Discussion.objects.annotate(
+            lastOpenAt=Subquery(
+            UserDiscussionMetaData.objects.filter(
+                user=user_profil,
+                discussion=OuterRef('pk')
+            ).values("lastOpenDiscussionAt")[:1],
+        )
+        )
+
+        for d in discussions:
+            d.nbMessagesNotRead = d.messages.filter(createdAt__gt=(d.lastOpenAt or datetime(1970, 1, 1))).count()
+
+        return discussions
+    
     @action(detail=True, methods=['get'])
     def messages(self, request, pk=None):
         """ Récupérer les messages d'une discussion """
         user_profil = self.get_user_profil()
         discussion = get_object_or_404(Discussion, pk=pk, users=user_profil)
-        messages = discussion.messages.order_by('-createdAt')
+        messages = discussion.messages.order_by('-createdAt')   
         serializer = MessageSerializer(messages, many=True)
+        try:
+            userDiscussionMetaData = UserDiscussionMetaData.objects.get(discussion=discussion, user=user_profil)
+        except:
+            userDiscussionMetaData= UserDiscussionMetaData.objects.create(discussion=discussion, user=user_profil)
+        userDiscussionMetaData.lastOpenDiscussionAt = datetime.now()
+        userDiscussionMetaData.save()
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
