@@ -7,8 +7,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from api.mixins import UserProfilMixin
 
-
-
 class UserCompetencesAPIView(UserProfilMixin, APIView):
 
     permission_classes = [permissions.IsAuthenticated]

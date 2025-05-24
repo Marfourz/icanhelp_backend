@@ -8,7 +8,7 @@ from api.serializers import CompetenceSerializer
 from rest_framework import permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
-#from model.matching import predict_match
+from model.matching import predict_match
 
 
 LIMIT_TO_MATCH = 0.7
@@ -42,13 +42,12 @@ class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
         search_text = request.GET.get('search')
-        print(search_text, LIMIT_TO_MATCH)
         competences = Competence.objects.all()
         matching_competences = []
         match_profils = []
         for competence in competences:
-            print("Competence : ", competence.title)
-            taux_match = 0 #predict_match(search_text, competence.title)
+            taux_match = predict_match(search_text, competence.title)
+            print(search_text , ' ', competence.title, ' : ', taux_match)
             if taux_match > LIMIT_TO_MATCH:
                 matching_competences.append(competence.title)
                 print(competence.user_personal, "user personal")

@@ -14,8 +14,6 @@ from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 
 
-
-
 class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
     serializer_class = InvitationSerializer
     permission_classes = [permissions.IsAuthenticated]
