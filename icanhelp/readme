@@ -1,0 +1,17 @@
+# I can help backend
+
+Ce projet constitut le backend de l'application icanhelp. Une application permettant de mettre en relation des personnes en fonction des compétences qu'ils souhaitent appprendre mais aussi des compétences qu'ils recherchent.
+
+
+### Installation 
+
+- Cloner le projet 
+
+```git clone https://github.com/Marfourz/icanhelp_backend.git```
+
+- Créer un environnement virtuel
+
+```pip -m venv venv``` et activer le.
+
+- Lancer l'installation des dépendances dans le fichier requirement
+```pip install -r requirement.txt```

@@ -32,7 +32,9 @@ class DiscussionViewSet(UserProfilMixin, viewsets.ModelViewSet):
                 discussion=OuterRef('pk')
             ).values("lastOpenDiscussionAt")[:1],
         )
-        )
+        ).filter(users__id=user_profil.id)
+
+        
 
         for d in discussions:
             d.nbMessagesNotRead = d.messages.filter(createdAt__gt=(d.lastOpenAt or datetime(1970, 1, 1))).count()

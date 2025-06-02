@@ -42,17 +42,16 @@ class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
         search_text = request.GET.get('search')
-        competences = Competence.objects.all()
-        matching_competences = []
-        match_profils = []
-        for competence in competences:
-            taux_match = predict_match(search_text, competence.title)
-            print(search_text , ' ', competence.title, ' : ', taux_match)
-            if taux_match > LIMIT_TO_MATCH:
-                matching_competences.append(competence.title)
-                print(competence.user_personal, "user personal")
-                match_profils.extend(competence.user_personal.all())
-            serialier = UserProfilSerializer(match_profils, many=True)
+        if not search_text:
+            return Response({"error": "Search text is required"}, status=400)
 
-        print("Total matching : ", matching_competences)
-        return Response(serialier.data)
+        competences = Competence.objects.prefetch_related('user_personal').all()
+
+        match_profils = [
+            user_personal for competence in competences
+            for user_personal in competence.user_personal.all()
+            if predict_match(search_text, competence.title) > LIMIT_TO_MATCH
+        ]
+
+        serializer = UserProfilSerializer(match_profils, many=True)
+        return Response(serializer.data)
