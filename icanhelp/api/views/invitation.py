@@ -118,6 +118,8 @@ class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
 
             discussion.lastMessage = message
 
+            discussion.save()
+
         # Sérialisation et réponse avec la discussion
         discussion_serializer = DiscussionSerializer(discussion)
         return Response(discussion_serializer.data, status=status.HTTP_201_CREATED)

@@ -5,6 +5,8 @@ from api.models.UserProfil import UserProfil
 class Discussion(models.Model):
     createdAt = models.DateTimeField(auto_now_add=True)
 
+    updatedAt = models.DateTimeField(auto_now=True)
+
     name = models.CharField(max_length=100,default='')
     
     createdBy = models.ForeignKey(

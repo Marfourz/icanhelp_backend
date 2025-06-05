@@ -50,12 +50,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
-        print(text_data, "aaaaaaaaaaaaaaaaaaaaa")
         text_data_json = json.loads(text_data)
         
         message = text_data_json['message']
         sender = text_data_json['sender']
         id = text_data_json['id']
+        discussion_id = text_data_json['discussion_id']
         
 
         # Send message to room group
@@ -65,7 +65,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'type': 'chat_message',
                 'message': message,
                 'sender' : sender,
-                'id': id
+                'id': id,
+                'discussion_id': discussion_id
             }
         )
 
@@ -73,12 +74,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         id = event['id']
         sender = event['sender']
         message = event['message']
+        discussion_id = event['discussion_id']
 
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'id': id,
             'message': message,
-            'sender': sender
+            'sender': sender,
+            'discussion_id':discussion_id,
+            'type': 'chat_message',
         }))
 
     @database_sync_to_async

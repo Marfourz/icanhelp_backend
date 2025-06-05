@@ -37,7 +37,7 @@ class DiscussionViewSet(UserProfilMixin, viewsets.ModelViewSet):
         
 
         for d in discussions:
-            d.nbMessagesNotRead = d.messages.filter(createdAt__gt=(d.lastOpenAt or datetime(1970, 1, 1))).count()
+            d.nbMessagesNotRead = d.messages.filter(createdAt__gt=(d.lastOpenAt or datetime(1970, 1, 1))).filter(~Q(sender=user_profil)).count()
 
         return discussions
     
@@ -76,7 +76,8 @@ class DiscussionViewSet(UserProfilMixin, viewsets.ModelViewSet):
                     "type": "chat_message",
                     "message": message.message,
                     "sender": user_profil.id,
-                    "id": message.id
+                    "id": message.id,
+                    'discussion_id':  discussion.id
                 }
             )
            
