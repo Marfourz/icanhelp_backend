@@ -17,17 +17,15 @@ class SignupView(UserProfilMixin, generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         userData = request.data
-
         # Vérifier si le mot de passe est présent
         if "password" not in userData:
             return Response({"error": "Le mot de passe est requis."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=userData)
+        print(userData, serializer.is_valid(), serializer.errors)
+
         if serializer.is_valid():
             user = serializer.save(password=make_password(userData["password"]))
-
-          
-
             # Générer les tokens JWT
             refresh = RefreshToken.for_user(user)
             return Response({ 

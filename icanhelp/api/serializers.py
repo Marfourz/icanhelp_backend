@@ -1,5 +1,5 @@
 from django.contrib.auth.models import Group, User
-from api.models import Invitation
+from api.models import Invitation,Category
 from rest_framework import serializers
 from api.models import *
 
@@ -65,6 +65,7 @@ class CompetenceSerializer(serializers.ModelSerializer):
         model = Competence
         fields = ['id', 'title']
 
+
 class InvitationSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -84,4 +85,41 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ['id','message','sender', 'type', 'createdAt']
+
+class UserCompetenceCreateSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(write_only=True)
+    category_id = serializers.IntegerField(write_only=True, required=False)  # optionnel
+
+    class Meta:
+        depth = 2
+        model = UserCompetence
+        fields = ['description', 'points_per_hour', 'level', 'title', 'category_id', 'competence']
+
+    def create(self, validated_data):
+        title = validated_data.pop('title')
+        category_id = validated_data.pop('category_id', None)
+
+        category = None
+        if category_id:
+            from .models import Category
+            try:
+                category = Category.objects.get(id=category_id)
+            except Category.DoesNotExist:
+                raise serializers.ValidationError("Catégorie introuvable.")
+        else:
+            raise serializers.ValidationError("Catégorie necessaire.")
+
+        # Récupérer ou créer la compétence
+        competence, _ = Competence.objects.get_or_create(title=title, defaults={'category': category})
+
+        return UserCompetence.objects.create(
+            competence=competence,
+            **validated_data
+        )
+    
+class CategorySerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Category
+        fields = '__all__'
 

@@ -28,11 +28,6 @@ from . import consumers
 from api import views
 
 
-urlpatterns = [
-    path('admin/', admin.site.urls),
-]
-
-
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
 router.register(r'users_profil', views.UserProfilViewSet)
@@ -40,6 +35,7 @@ router.register(r'groups', views.GroupViewSet)
 router.register(r'competences', views.CompetenceViewSet)
 router.register(r'invitations', InvitationViewSet, basename="invitation")
 router.register(r'discussions', views.DiscussionViewSet, basename='discussion')
+router.register(r'category', views.CategoryView, basename='category')
 
 
 websocket_urlpatterns = [
@@ -51,6 +47,7 @@ websocket_urlpatterns = [
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
+    path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('api/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),

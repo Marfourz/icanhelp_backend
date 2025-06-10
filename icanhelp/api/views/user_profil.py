@@ -47,6 +47,9 @@ class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
 
         competences = Competence.objects.prefetch_related('user_personal').all()
 
+        for user in UserProfil.objects.all():
+            print(user.competences_persornal.all())
+
         match_profils = [
             user_personal for competence in competences
             for user_personal in competence.user_personal.all()
