@@ -32,7 +32,6 @@ router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
 router.register(r'users_profil', views.UserProfilViewSet)
 router.register(r'groups', views.GroupViewSet)
-router.register(r'competences', views.CompetenceViewSet)
 router.register(r'invitations', InvitationViewSet, basename="invitation")
 router.register(r'discussions', views.DiscussionViewSet, basename='discussion')
 router.register(r'category', views.CategoryView, basename='category')
@@ -54,6 +53,7 @@ urlpatterns = [
     path('api/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/signup', SignupView.as_view(), name='signup'),
     path('user_profil/competences/<str:type>', UserCompetencesAPIView.as_view(), name='user-competences'),
+    path('user_profil/competences/<str:type>/<int:id>', UserCompetencesAPIView.as_view(), name='user-competence-detail'),
     #path('invitations', InvitationViewSet.as_view(), name='invitations'),
 
    

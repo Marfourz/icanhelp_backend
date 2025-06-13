@@ -1,5 +1,4 @@
 from api.models import *
-from api.serializers import CompetenceSerializer 
 
 from rest_framework import permissions,status,viewsets
 from rest_framework.response import Response
@@ -9,7 +8,6 @@ from api.mixins import UserProfilMixin
 
 
 class CompetenceViewSet(UserProfilMixin, viewsets.ModelViewSet):
-    serializer_class = CompetenceSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Competence.objects.all()
 

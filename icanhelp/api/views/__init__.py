@@ -1,4 +1,3 @@
-from .competence import CompetenceViewSet
 from .group import GroupViewSet
 from .invitation import InvitationViewSet
 from .signup import SignupView

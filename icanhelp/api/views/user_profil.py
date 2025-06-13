@@ -2,8 +2,6 @@ from api.models.UserProfil import UserProfil
 from api.serializers import UserProfilSerializer, UserSerializer
 from django.contrib.auth.models import User
 from api.mixins import UserProfilMixin
-from api.models import Competence
-from api.serializers import CompetenceSerializer
 
 from rest_framework import permissions, viewsets
 from rest_framework.response import Response
@@ -58,3 +56,43 @@ class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
 
         serializer = UserProfilSerializer(match_profils, many=True)
         return Response(serializer.data)
+    
+
+    @action(detail=False, methods=['get'], url_path='search')
+    def search2(self, request):
+        query = request.GET.get('search')
+        if not query:
+            return Response({"error": "Search text is required"}, status=400)
+
+        query_embedding = model.encode(query, convert_to_tensor=True)
+
+        results = []
+
+        for user in UserProfil.objects.prefetch_related('competences_persornal').all():
+            comp_texts = [comp.nom for comp in user.competences_persornal.all()]
+            if not comp_texts:
+                continue
+
+            comp_embeddings = model.encode(comp_texts, convert_to_tensor=True)
+            similarities = util.cos_sim(query_embedding, comp_embeddings)[0]
+
+            # Similarity moyenne comme score global
+            avg_score = float(torch.mean(similarities))
+
+            # Compétences matchées au-dessus d’un seuil
+            matched = [
+                {"competence": comp, "score": float(sim)}
+                for comp, sim in zip(comp_texts, similarities)
+                if sim > 0.5  # seuil à ajuster
+            ]
+
+            results.append({
+                "user": user.id,
+                "match_score": round(avg_score, 3),
+                "matched_competences": matched
+            })
+
+        results.sort(key=lambda x: x["match_score"], reverse=True)
+
+        return Response(results)
+

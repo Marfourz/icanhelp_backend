@@ -1,6 +1,5 @@
 from django.db import models
-from api.models.UserProfil import UserProfil
-from api.models.Competence import Competence
+from api.models import UserProfil, UserCompetence
 
 
 
@@ -28,10 +27,10 @@ class Invitation(models.Model):
     )
 
     competences_desired = models.ManyToManyField(
-        Competence, blank=True, related_name="invitation_competences_desired"
+        'UserCompetence', blank=True, related_name="invitation_competences_desired"
     )
     competences_persornal = models.ManyToManyField(
-        Competence,  blank=True, related_name="invitation_competences_personal"
+        'UserCompetence',  blank=True, related_name="invitation_competences_personal"
     )
 
     message = models.TextField()

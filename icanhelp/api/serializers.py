@@ -60,12 +60,6 @@ class DiscussionSerializer(serializers.ModelSerializer):
             }
         return None
 
-class CompetenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Competence
-        fields = ['id', 'title']
-
-
 class InvitationSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -93,7 +87,7 @@ class UserCompetenceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         depth = 2
         model = UserCompetence
-        fields = ['description', 'points_per_hour', 'level', 'title', 'category_id', 'competence']
+        fields = ['id','description', 'points_per_hour', 'level', 'title', 'category_id', 'competence']
 
     def create(self, validated_data):
         title = validated_data.pop('title')
