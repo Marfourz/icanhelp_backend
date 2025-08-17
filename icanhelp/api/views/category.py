@@ -5,6 +5,7 @@ from api.models import Category
 class CategoryView(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
+    permission_classes = [permissions.IsAdminUser]
 
     def get_permissions(self):
         """

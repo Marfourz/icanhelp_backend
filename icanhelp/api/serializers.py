@@ -25,21 +25,44 @@ class UserProfilSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     
     class Meta:
-        depth = 1
+        depth = 2
         model = UserProfil
         fields = '__all__'
         ordering = ['id']
+    
+    def update(self, instance, validated_data):
+        # Récupération des données utilisateur imbriquées
+        user_data = validated_data.pop('user', {})
+        username = user_data.get('username')
 
-class UserProfilSerializer(serializers.ModelSerializer):
+        # Met à jour le user.username si fourni
+        if username:
+            instance.user.username = username
+            instance.user.save()
+
+        # Met à jour les autres champs du profil
+        return super().update(instance, validated_data)
+
+
+class MyProfilSerializer(serializers.ModelSerializer):
+
+    nb_skill_learn_finished = serializers.SerializerMethodField()
+    nb_skill_learn_started = serializers.SerializerMethodField()
 
     user = UserSerializer()
     
     class Meta:
-        depth = 1
+        depth = 2
         model = UserProfil
         fields = '__all__'
         ordering = ['id']
+    
+    def get_nb_skill_learn_started(self, obj):
+        return obj.sendInvitations.exclude(state="PENDING").count()
 
+    def get_nb_skill_learn_finished(self, obj):
+        return obj.sendInvitations.filter(state="VALIDATED").count()
+    
 
 class DiscussionSerializer(serializers.ModelSerializer):
     lastMessage = serializers.SerializerMethodField()
@@ -61,18 +84,19 @@ class DiscussionSerializer(serializers.ModelSerializer):
         return None
 
 class InvitationSerializer(serializers.ModelSerializer):
-    
+    discussion = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
-        depth = 2
+        depth = 3
         model = Invitation
-        fields = ['id', 'receiver', 'createdAt','createdBy', 'competences_desired', 'competences_persornal','state','message']
-        ordering = ['-cretedAt']
+        fields = '__all__'
+        ordering = ['-createdAt']
 
 class CreateInvitationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Invitation
-        fields = ['id', 'receiver', 'createdBy', 'competences_desired', 'competences_persornal', 'message']
+        fields = ['id', 'receiver', 'createdBy', 'sender_competence', 'receiver_competence', 'senderPoints', 'receiverPoints', 'duration', 'message', 'discussion']
   
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -81,36 +105,32 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = ['id','message','sender', 'type', 'createdAt']
 
 class UserCompetenceCreateSerializer(serializers.ModelSerializer):
-    title = serializers.CharField(write_only=True)
     category_id = serializers.IntegerField(write_only=True, required=False)  # optionnel
 
     class Meta:
         depth = 2
         model = UserCompetence
-        fields = ['id','description', 'points_per_hour', 'level', 'title', 'category_id', 'competence']
+        fields = ['id','description', 'points','duration', 'level', 'title', 'category_id', 'type', 'category', 'user']
 
-    def create(self, validated_data):
-        title = validated_data.pop('title')
+        read_only_fields = ['category', 'user']
+
+    def create(self, validated_data, user_profil):
         category_id = validated_data.pop('category_id', None)
 
-        category = None
-        if category_id:
-            from .models import Category
-            try:
-                category = Category.objects.get(id=category_id)
-            except Category.DoesNotExist:
-                raise serializers.ValidationError("Catégorie introuvable.")
-        else:
-            raise serializers.ValidationError("Catégorie necessaire.")
+        if not category_id:
+            raise serializers.ValidationError("Catégorie nécessaire.")
 
-        # Récupérer ou créer la compétence
-        competence, _ = Competence.objects.get_or_create(title=title, defaults={'category': category})
-
+        try:
+            category = Category.objects.get(id=category_id)
+        except Category.DoesNotExist:
+            raise serializers.ValidationError("Catégorie introuvable.")
+        
         return UserCompetence.objects.create(
-            competence=competence,
+            category=category,
+            user=user_profil,
             **validated_data
         )
-    
+
 class CategorySerializer(serializers.ModelSerializer):
     
     class Meta:

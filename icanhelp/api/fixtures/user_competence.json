@@ -1,0 +1,50 @@
+[
+  {
+    "model": "api.usercompetence",
+    "pk": 1,
+    "fields": {
+      "title": "Python",
+      "description": "Langage backend",
+      "points_per_hour": 20,
+      "level": "advanced",
+      "category": 1,
+      "createdAt": "2024-06-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "api.usercompetence",
+    "pk": 2,
+    "fields": {
+      "title": "Figma",
+      "description": "Design d'interfaces",
+      "points_per_hour": 15,
+      "level": "intermediate",
+      "category": 2,
+      "createdAt": "2024-06-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "api.usercompetence",
+    "pk": 3,
+    "fields": {
+      "title": "Jouer au basket",
+      "description": "",
+      "points_per_hour": 15,
+      "level": "intermediate",
+      "category": 2,
+      "createdAt": "2024-06-01T10:00:00Z"
+    }
+  },
+    {
+    "model": "api.usercompetence",
+    "pk": 4,
+    "fields": {
+      "title": "Jouer au tennis",
+      "description": "",
+      "points_per_hour": 15,
+      "level": "intermediate",
+      "category": 2,
+      "createdAt": "2024-06-01T10:00:00Z"
+    }
+  }
+]

@@ -35,6 +35,7 @@ router.register(r'groups', views.GroupViewSet)
 router.register(r'invitations', InvitationViewSet, basename="invitation")
 router.register(r'discussions', views.DiscussionViewSet, basename='discussion')
 router.register(r'category', views.CategoryView, basename='category')
+router.register(r'competences', views.CompetenceViewSet,  basename='competence')
 
 
 websocket_urlpatterns = [
@@ -52,8 +53,8 @@ urlpatterns = [
     path('api/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/signup', SignupView.as_view(), name='signup'),
-    path('user_profil/competences/<str:type>', UserCompetencesAPIView.as_view(), name='user-competences'),
-    path('user_profil/competences/<str:type>/<int:id>', UserCompetencesAPIView.as_view(), name='user-competence-detail'),
+    path('user_profil/competences', UserCompetencesAPIView.as_view(), name='user-competences'),
+    path('user_profil/competences/<int:id>', UserCompetencesAPIView.as_view(), name='user-competence-detail'),
     #path('invitations', InvitationViewSet.as_view(), name='invitations'),
 
    

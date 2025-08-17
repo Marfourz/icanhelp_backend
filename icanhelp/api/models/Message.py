@@ -1,8 +1,4 @@
 from django.db import models
-from api.models.Discussion import Discussion
-from api.models.UserProfil import UserProfil
-
-
 
 class MessageType(models.TextChoices):
     TEXT = "text"
@@ -19,8 +15,8 @@ class Message(models.Model):
         default=MessageType.TEXT
     )
     sender = models.ForeignKey(
-        UserProfil, related_name="messageSends", blank=True, null=True ,on_delete=models.CASCADE,
+        'api.UserProfil', related_name="messageSends", blank=True, null=True ,on_delete=models.CASCADE,
     ) 
-    discussion = models.ForeignKey(Discussion, on_delete=models.CASCADE, related_name="messages")
+    discussion = models.ForeignKey('api.Discussion', on_delete=models.CASCADE, related_name="messages")
     class Meta:
         ordering = ['createdAt']

@@ -1,23 +1,21 @@
 from django.db import models
-from api.models import UserProfil, UserCompetence
-
 
 
 class InvitationState(models.TextChoices):
     PENDING = "PENDING", "En attente"
     ACCEPTED = "ACCEPT", "Accepté"
     REJECTED = "REJECT", "Refusé"
-
+    VALIDATED = "VALIDATE", "Terminé"
 
 class Invitation(models.Model):
     createdAt = models.DateTimeField(auto_now_add=True)
     
     createdBy = models.ForeignKey(
-        UserProfil, related_name="sendInvitations", blank=False, on_delete=models.CASCADE
+        'api.UserProfil', related_name="sendInvitations", blank=False, on_delete=models.CASCADE
     )
 
     receiver = models.ForeignKey(
-        UserProfil, related_name="receivedInvitations", blank=False, on_delete=models.CASCADE
+        'api.UserProfil', related_name="receivedInvitations", blank=False, on_delete=models.CASCADE
     )
 
     state = models.CharField(
@@ -26,15 +24,26 @@ class Invitation(models.Model):
         default=InvitationState.PENDING
     )
 
-    competences_desired = models.ManyToManyField(
-        'UserCompetence', blank=True, related_name="invitation_competences_desired"
+
+    sender_competence = models.ForeignKey(
+        'api.UserCompetence', blank=True, related_name="invitation_competences_send", null=True ,on_delete=models.CASCADE,
     )
-    competences_persornal = models.ManyToManyField(
-        'UserCompetence',  blank=True, related_name="invitation_competences_personal"
+
+    senderPoints = models.PositiveIntegerField(blank=True, null=True)
+
+    receiver_competence = models.ForeignKey(
+        'api.UserCompetence',  blank=True, related_name="invitation_competences_receive", null=True ,on_delete=models.CASCADE,
     )
+
+    receiverPoints = models.PositiveIntegerField(blank=True, null=True)
 
     message = models.TextField()
 
+    duration = models.PositiveIntegerField(blank=True, null=True)
+
+    discussion = models.ForeignKey(
+        'api.Discussion',  blank=True, related_name="invitations", null=True ,on_delete=models.PROTECT,
+    )
 
     class Meta:
         ordering = ['createdAt']

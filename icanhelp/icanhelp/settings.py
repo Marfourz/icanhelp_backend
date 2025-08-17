@@ -29,7 +29,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     # "5d56-46-193-67-60.ngrok-free.app",
     "localhost",
-    "2a6a-2a02-8428-5ae7-4e01-bc73-5cc2-3775-c27.ngrok-free.app"
+    "62ca35e9a2aa.ngrok-free.app"
 ]
 
 
@@ -140,7 +140,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 5      ,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],

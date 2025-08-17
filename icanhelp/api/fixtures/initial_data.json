@@ -1,0 +1,113 @@
+[
+  {
+    "model": "api.category",
+    "pk": 1,
+    "fields": {
+      "name": "Développement Web",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 2,
+    "fields": {
+      "name": "Frontend",
+      "parent": 1
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+      "username": "Super1",
+      "password": "zy8W+jG+E48hN5Z4rnHfWdJnuOjogxxbl0dTI6JCiZU=",
+      "is_superuser": false,
+      "is_staff": false,
+      "is_active": true
+    }
+  },
+  {
+    "model": "api.userprofil",
+    "pk": 1,
+    "fields": {
+      "bio": "Développeur passionné de Django.",
+      "city": "Paris",
+      "location_lat": 48.8566,
+      "location_lon": 2.3522,
+      "points": 50,
+      "availability": {
+        "monday": ["10:00", "18:00"]
+      },
+      "user": 1
+    }
+  },
+  {
+    "model": "api.usercompetence",
+    "pk": 1,
+    "fields": {
+      "title": "HTML/CSS",
+      "description": "Compétence en création de sites statiques.",
+      "points_per_hour": 10,
+      "level": "beginner",
+      "createdAt": "2025-06-10T10:00:00Z",
+      "category": 2
+    }
+  },
+  {
+    "model": "api.userprofil_competences_persornal",
+    "pk": 1,
+    "fields": {
+      "userprofil": 1,
+      "usercompetence": 1
+    }
+  },
+  {
+    "model": "api.discussion",
+    "pk": 1,
+    "fields": {
+      "name": "Projet Django",
+      "createdAt": "2025-06-10T11:00:00Z",
+      "updatedAt": "2025-06-10T11:00:00Z",
+      "createdBy": 1
+    }
+  },
+  {
+    "model": "api.userdiscussionmetadata",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "discussion": 1,
+      "lastOpenDiscussionAt": "2025-06-10T12:00:00Z"
+    }
+  },
+  {
+    "model": "api.message",
+    "pk": 1,
+    "fields": {
+      "message": "Salut, tu veux bosser ensemble ?",
+      "createdAt": "2025-06-10T12:30:00Z",
+      "type": "text",
+      "sender": 1,
+      "discussion": 1
+    }
+  },
+  {
+    "model": "api.invitation",
+    "pk": 1,
+    "fields": {
+      "message": "Je veux collaborer avec toi sur un projet Django.",
+      "createdAt": "2025-06-10T13:00:00Z",
+      "state": "PENDING",
+      "createdBy": 1,
+      "receiver": 1
+    }
+  },
+  {
+    "model": "api.invitation_competences_persornal",
+    "pk": 1,
+    "fields": {
+      "invitation": 1,
+      "usercompetence": 1
+    }
+  }
+]
