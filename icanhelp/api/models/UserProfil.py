@@ -28,12 +28,25 @@ class UserProfil(models.Model):
     
     def get_personal_competences(self):
         return self.competences.filter(type=CompetenceType.PERSONAL)
+    
+    def get_categories(self, type=None):
+        qs = self.competences.all()
+
+        if type == CompetenceType.DESIRED:
+            qs = qs.filter(type=CompetenceType.DESIRED)
+        elif type == CompetenceType.PERSONAL:
+            qs = qs.filter(type=CompetenceType.PERSONAL)
+
+        return qs.values_list("categorie", flat=True).distinct()
+
 
     def update_points_after_invitation(self, points_to_win: int, points_to_lose: int, is_sender: bool):
         """
         Met à jour les points du joueur et prépare les points à gagner/perdre
         après l'acceptation d'une invitation.
         """
+        print("Point to loose")
+        print(points_to_lose)
         if is_sender:
             # Le sender perd immédiatement des points du receiver
             self.points = max(0, self.points - points_to_lose)

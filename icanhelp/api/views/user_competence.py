@@ -29,9 +29,9 @@ class UserCompetencesAPIView(UserProfilMixin, APIView):
             return Response(UserCompetenceCreateSerializer(competence).data, status=201)
         return Response(serializer.errors, status=400)
 
-    def delete(self, request):
+    def delete(self, request, id):
         user_profil = self.get_user_profil()
-        competence_ids = request.data.get('competence_ids', [])
+        competence_ids = [id]
 
         if not competence_ids:
             return Response({"error": "Aucune compétence fournie."}, status=status.HTTP_400_BAD_REQUEST)

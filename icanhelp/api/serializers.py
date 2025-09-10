@@ -1,5 +1,5 @@
 from django.contrib.auth.models import Group, User
-from api.models import Invitation,Category
+from api.models import Invitation,Category,InvitationState
 from rest_framework import serializers
 from api.models import *
 
@@ -61,7 +61,7 @@ class MyProfilSerializer(serializers.ModelSerializer):
         return obj.sendInvitations.exclude(state="PENDING").count()
 
     def get_nb_skill_learn_finished(self, obj):
-        return obj.sendInvitations.filter(state="VALIDATED").count()
+        return obj.sendInvitations.filter(state=InvitationState.VALIDATED).count()
     
 
 class DiscussionSerializer(serializers.ModelSerializer):
@@ -96,7 +96,9 @@ class CreateInvitationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Invitation
-        fields = ['id', 'receiver', 'createdBy', 'sender_competence', 'receiver_competence', 'senderPoints', 'receiverPoints', 'duration', 'message', 'discussion']
+        fields = ['id', 'receiver', 'createdBy', 'sender_competence', 'receiver_competence', 'senderPoints', 'receiverPoints', 'duration', 'message', 'discussion', 'type']
+
+        
   
 
 class MessageSerializer(serializers.ModelSerializer):

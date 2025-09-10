@@ -1,11 +1,12 @@
 
-from api.models.Invitation import Invitation, InvitationState
+from api.models.Invitation import Invitation, InvitationState, InvitationType
 from api.serializers import InvitationSerializer, CreateInvitationSerializer
 from api.models.UserProfil import UserProfil
 from api.models.Discussion import Discussion
 from api.models.Message import Message
 from api.serializers import DiscussionSerializer
 from api.mixins import UserProfilMixin
+from django.db import transaction
  
 
 from rest_framework import permissions, viewsets,status
@@ -36,26 +37,37 @@ class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
         # Récupérer le receiver de la requête
         receiver_id = request.data.get("receiver")
 
+         # Assigner receiver en fonction de l'ID fourni
+        receiver_profil = get_object_or_404(UserProfil, id=receiver_id)
+
         message = request.data.get("message")
 
         receiverCompetence = request.data.get('receiver_competence')
 
-        if not user_profil.get_personal_competences().filter(id=receiverCompetence).exists():
-            return Response(
-                    {"message": "Le profil ne possède pas les compétences demandées"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        senderCompetence = request.data.get('sender_competence')
 
+        type = request.data.get('type')
+
+        print("Invitation type", senderCompetence)
+
+        if type == InvitationType.LEARN:
+    
+            if not receiver_profil.get_personal_competences().filter(id=receiverCompetence).exists():
+                return Response(
+                        {"message": "Le profil ne possède pas les compétences demandées"},
+                        status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        print("after")
         if not receiver_id:
             return Response({"message": "Le champ receiver est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Assigner receiver en fonction de l'ID fourni
-        receiver_profil = get_object_or_404(UserProfil, id=receiver_id)
 
         if receiver_id == user_profil.id:
             return Response({"message": "Vous ne pouvez vous envoyer d'invitation."}, status=status.HTTP_400_BAD_REQUEST)
 
         discussion = Discussion.get_or_create_between(receiver_profil, user_profil)
+
 
          # Création du premier message avec le texte de l'invitation
         if message: 
@@ -138,24 +150,24 @@ class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
         # Création de la discussion
         discussion = Discussion.get_or_create_between(sender, receiver)
 
-        # Création du premier message avec le texte de l'invitation
-        if invitation.message: 
-            message = Message.objects.create(
-                message=invitation.message,
-                discussion=discussion,
-                sender=invitation.createdBy
-            )
+        # # Création du premier message avec le texte de l'invitation
+        # if invitation.message: 
+        #     message = Message.objects.create(
+        #         message=invitation.message,
+        #         discussion=discussion,
+        #         sender=invitation.createdBy
+        #     )
 
-            discussion.lastMessage = message
+        #     discussion.lastMessage = message
 
-            discussion.save()
+        #     discussion.save()
 
-        # Sérialisation et réponse avec la discussion
-        discussion_serializer = DiscussionSerializer(discussion)
+        # # Sérialisation et réponse avec la discussion
+        # discussion_serializer = DiscussionSerializer(discussion)
 
-
+        serializer = self.get_serializer(invitation)
     
-        return Response(discussion_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
     @action(detail=True, methods=['post'])
@@ -171,18 +183,28 @@ class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
                 {"message": "Vous n'êtes pas autorisé à valider cette invitation."},
                 status=status.HTTP_403_FORBIDDEN
             )
+        
+        if invitation.state != InvitationState.ACCEPTED:
+            return Response(
+                {"message": "Seules les invitations en acceptée peuvent être validées."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-       # Mise à jour du sender
-        sender.pointsToLose -= invitation.receiverPoints
-        sender.save(update_fields=["pointsToLose"])
+        with transaction.atomic():
+            # Mise à jour des points
+            sender.pointsToLose -= invitation.receiverPoints
+            sender.pointsToWin -= invitation.senderPoints
+            sender.points += invitation.senderPoints
+            sender.save()
 
-        # Mise à jour du receiver
-        receiver.pointsToWin -= invitation.receiverPoints
-        receiver.points += invitation.receiverPoints
-        receiver.save(update_fields=["pointsToWin", "points"])
+            receiver.pointsToWin -= invitation.receiverPoints
+            receiver.pointsToLose -= invitation.senderPoints
+            receiver.points += invitation.receiverPoints
+            receiver.save()
 
-        invitation.state = InvitationState.VALIDATE
-        invitation.save()
+            # Validation de l’invitation
+            invitation.state = InvitationState.VALIDATED
+            invitation.save(update_fields=["state"])
 
         serializer = self.get_serializer(invitation)
         return Response(serializer.data)

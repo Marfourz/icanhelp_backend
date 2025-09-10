@@ -22,7 +22,6 @@ class SignupView(UserProfilMixin, generics.CreateAPIView):
             return Response({"error": "Le mot de passe est requis."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=userData)
-        print(userData, serializer.is_valid(), serializer.errors)
 
         if serializer.is_valid():
             user = serializer.save(password=make_password(userData["password"]))

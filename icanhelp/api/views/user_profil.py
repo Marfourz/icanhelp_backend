@@ -36,15 +36,15 @@ class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
             category = Category.objects.get(id=request.GET.get('category_id'))
             categories = [category]
             profils = UserProfil.objects.filter(
-                competences_persornal__category__in=categories
+                competences__category__in=categories
             ).exclude(id=userProfil.id).distinct()
         else:
             # 🔹 Étape 1 : récupère les catégories préférées
-            categories_preferees = userProfil.getCategoriesDesired()
+            categories_preferees = userProfil.get_categories()
 
             # 🔸 Étape 2 : profils avec catégories préférées
             profils_preferes = UserProfil.objects.filter(
-                competences_persornal__category__in=categories_preferees
+                competences__category__in=categories_preferees
             ).exclude(id=userProfil.id).distinct()
 
             # 🔸 Étape 3 : profils avec les autres catégories
@@ -63,7 +63,7 @@ class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
             scored_profils = []
             for profil in profils:
                 max_score = 0
-                for competence in profil.competences_persornal.all():
+                for competence in profil.competences.all():
                     score = predict_match(search_text, competence.title)
                     if score > max_score:
                         max_score = score

@@ -7,6 +7,10 @@ class InvitationState(models.TextChoices):
     REJECTED = "REJECT", "Refusé"
     VALIDATED = "VALIDATE", "Terminé"
 
+class InvitationType(models.TextChoices):
+    LEARN = "LEARN", "Learn"
+    TEACH = "TEACH", "Teach"
+
 class Invitation(models.Model):
     createdAt = models.DateTimeField(auto_now_add=True)
     
@@ -24,6 +28,11 @@ class Invitation(models.Model):
         default=InvitationState.PENDING
     )
 
+    type = models.CharField(
+        max_length=20,
+        choices=InvitationType.choices,
+        default=InvitationType.LEARN
+    )
 
     sender_competence = models.ForeignKey(
         'api.UserCompetence', blank=True, related_name="invitation_competences_send", null=True ,on_delete=models.CASCADE,
