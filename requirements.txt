@@ -5,6 +5,4 @@ daphne
 channels
 django-cors-headers
 djangorestframework-simplejwt
-sentence_transformers
-datasets
-transformers[torch]
+gunicorn
