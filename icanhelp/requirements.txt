@@ -6,3 +6,4 @@ channels
 django-cors-headers
 djangorestframework-simplejwt
 gunicorn
+whitenoise
