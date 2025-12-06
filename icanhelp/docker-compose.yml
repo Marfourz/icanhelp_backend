@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - '8001:8000'
+    entrypoint: /app/entrypoint.sh gunicorn
