@@ -3,3 +3,5 @@ env
 venv
 **/*checkpoint*
 icanhelp/model/models
+github-deploy-icanhelp
+github-deploy-icanhelp.pub
