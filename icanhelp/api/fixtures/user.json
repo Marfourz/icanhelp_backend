@@ -3,30 +3,9 @@
     "model": "auth.user",
     "pk": 1,
     "fields": {
-      "username": "testuser1",
+      "username": "Marfourz",
       "password": "pbkdf2_sha256$600000$s484hi9HBQAiQfETxGHM2S$6p6a3+mJCnrz3PetuxKu8KT49Zop8AysrLCEI62F6kI=", 
-      "email": "test1@example.com",
+      "email": "boukarimarfourz@gmail.com",
       "is_active": true
     }
-  },
-  {
-    "model": "auth.user",
-    "pk": 2,
-    "fields": {
-      "username": "testuser2",
-      "password": "pbkdf2_sha256$600000$s484hi9HBQAiQfETxGHM2S$6p6a3+mJCnrz3PetuxKu8KT49Zop8AysrLCEI62F6kI=",
-      "email": "test2@example.com",
-      "is_active": true
-    }
-  },
-    {
-    "model": "auth.user",
-    "pk": 3,
-    "fields": {
-      "username": "testuser3",
-      "password": "pbkdf2_sha256$600000$s484hi9HBQAiQfETxGHM2S$6p6a3+mJCnrz3PetuxKu8KT49Zop8AysrLCEI62F6kI=",
-      "email": "test3@example.com",
-      "is_active": true
-    }
-  }
-]
+  }]

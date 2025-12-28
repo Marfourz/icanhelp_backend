@@ -9,37 +9,7 @@
       "points": 100,
       "availability": {"monday": ["08:00", "12:00"], "tuesday": ["14:00", "18:00"]},
       "user": 1,
-      "competences_persornal": [1],
-      "competences_desired": [2]
-    }
-  },
-  {
-    "model": "api.userprofil",
-    "pk": 2,
-    "fields": {
-      "bio": "Designer UI/UX",
-      "city": "Paris",
-      "location_lat": 48.8566,
-      "location_lon": 2.3522,
-      "points": 80,
-      "availability": {"wednesday": ["10:00", "16:00"]},
-      "user": 2,
-      "competences_persornal": [2],
-      "competences_desired": [1, 3]
-    }
-  },
-  {
-    "model": "api.userprofil",
-    "pk": 3,
-    "fields": {
-      "bio": "Étudiant sportif",
-      "city": "Lyon",
-      "location_lat": 45.75,
-      "location_lon": 4.85,
-      "points": 60,
-      "availability": {"friday": ["13:00", "17:00"]},
-      "user": 3,
-      "competences_persornal": [3,4],
-      "competences_desired": [1]
+      "competences_persornal": [],
+      "competences_desired": []
     }
   }]

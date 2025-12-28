@@ -1,23 +1,80 @@
 [
   {
     "model": "api.category",
+    "pk": 8,
+    "fields": {
+      "name": "Jeux",
+      "parent": null
+    }
+  },
+
+  {
+    "model": "api.category",
+    "pk": 3,
+    "fields": {
+      "name": "Musique",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 4,
+    "fields": {
+      "name": "Danse",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 5,
+    "fields": {
+      "name": "Sport",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 6,
+    "fields": {
+      "name": "Peinture & Arts visuels",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 7,
+    "fields": {
+      "name": "Photographie",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 9,
+    "fields": {
+      "name": "Cuisine",
+      "parent": null
+    }
+  },
+  {
+    "model": "api.category",
+    "pk": 10,
+    "fields": {
+      "name": "Bien-être",
+      "parent": null
+    }
+  },
+    {
+    "model": "api.category",
     "pk": 1,
     "fields": {
-      "name": "Développement",
+      "name": "Informatique",
       "parent": null
     }
   },
   {
     "model": "api.category",
     "pk": 2,
-    "fields": {
-      "name": "Design",
-      "parent": null
-    }
-  },
-    {
-    "model": "api.category",
-    "pk": 3,
     "fields": {
       "name": "Design",
       "parent": null
