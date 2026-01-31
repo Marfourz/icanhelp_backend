@@ -15,6 +15,8 @@ class UserProfil(models.Model):
     pointsToWin = models.PositiveIntegerField(default=0,null=True )
     pointsToLose = models.PositiveIntegerField(default=0, null=True)
     availability = models.JSONField(default=dict)
+   
+
 
     def __str__(self):
         return self.user.username

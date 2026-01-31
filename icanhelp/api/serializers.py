@@ -30,6 +30,12 @@ class UserProfilSerializer(serializers.ModelSerializer):
         fields = '__all__'
         ordering = ['id']
     
+    def get_photo_url(self, obj):
+        if obj.photo:
+            request = self.context.get("request")
+            return request.build_absolute_uri(obj.photo.url)
+        return None
+    
     def update(self, instance, validated_data):
         # Récupération des données utilisateur imbriquées
         user_data = validated_data.pop('user', {})

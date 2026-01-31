@@ -7,17 +7,20 @@ from api.models.Message import Message
 from api.serializers import DiscussionSerializer
 from api.mixins import UserProfilMixin
 from django.db import transaction
- 
 
 from rest_framework import permissions, viewsets,status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
+from rest_framework import mixins
 
-from api.models import UserCompetence
 
-
-class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
+class InvitationViewSet(
+    UserProfilMixin,
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    ):
     serializer_class = InvitationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -99,7 +102,6 @@ class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
 
         return Response(discussion_serializer.data, status=status.HTTP_201_CREATED)
         
-
     @action(detail=False, methods=['get'])
     def sent(self, request):
         """Lister les invitations envoyées par l'utilisateur."""
@@ -209,7 +211,7 @@ class InvitationViewSet(UserProfilMixin,viewsets.ModelViewSet):
         serializer = self.get_serializer(invitation)
         return Response(serializer.data)
     
-   
+
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         """Refuser une invitation."""

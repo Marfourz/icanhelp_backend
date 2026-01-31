@@ -20,6 +20,7 @@ class UserCompetence(models.Model):
         choices=CompetenceType.choices, 
         default=CompetenceType.PERSONAL
     )
+    #file = models.ImageField(null=True)
 
     def __str__(self):
         return self.title

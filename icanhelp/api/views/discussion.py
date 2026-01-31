@@ -9,14 +9,18 @@ from api.mixins import UserProfilMixin
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from datetime import datetime
-from django.db.models import OuterRef, Subquery, Count, Q
-from django.db.models.functions import Coalesce
+from django.db.models import OuterRef, Subquery
+from rest_framework import mixins
 
 
 from api.models import UserDiscussionMetaData
 
 
-class DiscussionViewSet(UserProfilMixin, viewsets.ModelViewSet):
+class DiscussionViewSet(
+    UserProfilMixin, 
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin
+):
     serializer_class = DiscussionSerializer
     permission_classes = [permissions.IsAuthenticated]
 

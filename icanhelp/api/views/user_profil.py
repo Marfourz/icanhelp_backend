@@ -6,14 +6,14 @@ from api.mixins import UserProfilMixin
 from rest_framework import permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.pagination import PageNumberPagination
+from rest_framework import mixins
 
 
 LIMIT_TO_MATCH = 0.7
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    API endpoint that allows users to be viewed or edited.
+    API endpoint that allows users to be viewed.
     """
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
@@ -21,7 +21,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 
-class UserProfilViewSet(UserProfilMixin, viewsets.ModelViewSet):
+class UserProfilViewSet(UserProfilMixin, 
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin
+):
+
     queryset = UserProfil.objects.all()
     serializer_class = UserProfilSerializer
     permission_classes = [permissions.IsAuthenticated]

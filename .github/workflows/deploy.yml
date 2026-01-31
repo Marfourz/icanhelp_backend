@@ -27,7 +27,6 @@ jobs:
             cd /home/dev/icanhelp_backend/icanhelp &&
             git pull origin main &&
             docker compose down &&
-            docker compose pull &&
             docker compose up -d --build
             docker ps
           "

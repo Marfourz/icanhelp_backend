@@ -179,4 +179,7 @@ CHANNEL_LAYERS = {
 
 DJANGO_SETTINGS_MODULE = 'icanhelp.settings'
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 

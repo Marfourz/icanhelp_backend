@@ -1,23 +1,21 @@
 from api.models import *
 
-from rest_framework import permissions,status,viewsets
+from rest_framework import permissions,viewsets
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from api.mixins import UserProfilMixin
 from api.serializers import UserCompetenceCreateSerializer
-from django.db.models import Count
 from rest_framework.decorators import action
-from api.models import Category
 from api.models.UserCompetence import CompetenceType
 from django.db.models import Q, F
 from django.db.models import Case, When, Value, IntegerField, FloatField
-from django.db.models.expressions import RawSQL
 from django.db.models.functions import ACos, Cos, Radians, Sin, Coalesce
+from rest_framework import mixins
 
 
-
-class CompetenceViewSet(UserProfilMixin, viewsets.ModelViewSet):
+class CompetenceViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet
+):
     permission_classes = [permissions.IsAuthenticated]
     queryset = UserCompetence.objects.all()
     serializer_class = UserCompetenceCreateSerializer
@@ -48,6 +46,7 @@ class CompetenceViewSet(UserProfilMixin, viewsets.ModelViewSet):
                 pass  # Ignore mauvaise valeur
 
         return queryset
+        
     
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
