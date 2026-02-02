@@ -19,7 +19,7 @@ from api.models import UserDiscussionMetaData
 class DiscussionViewSet(
     UserProfilMixin, 
     viewsets.GenericViewSet,
-    mixins.ListModelMixin
+    mixins.ListModelMixin,
 ):
     serializer_class = DiscussionSerializer
     permission_classes = [permissions.IsAuthenticated]

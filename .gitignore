@@ -1,5 +1,5 @@
-env
 .env
+.env.dev
 venv
 **/*checkpoint*
 icanhelp/model/models
