@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -181,5 +183,39 @@ DJANGO_SETTINGS_MODULE = 'icanhelp.settings'
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+if ENVIRONMENT == "local":
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+         "staticfiles": {  
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    }
+    }
+    AWS_S3_ENDPOINT_URL = "http://minio:9000"
+    AWS_ACCESS_KEY_ID = os.getenv("MINIO_USER")
+    AWS_SECRET_ACCESS_KEY = os.getenv("MINIO_PASSWORD")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("MINIO_BUCKET")
+    AWS_S3_REGION_NAME = "us-east-1"
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+         "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    }
+    }
+    AWS_S3_ENDPOINT_URL = f"https://{env('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com"
+    AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+    AWS_S3_REGION_NAME = "auto"
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+    
 
 

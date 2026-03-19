@@ -10,29 +10,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        # 1️⃣ Categories
-        categories = [
-            ("Musique", "music_note", "#53A06E"),
-            ("Sport", "sports_soccer", "#F09E54"),
-            ("Danse", "person_walking","#FE8235"),
-             ("Bien être", "faceSmile", "#A0E3E2"),
-            ("Cuisine", "cookie", "#373737"),
-            ("Informatique", "computer", "#53A06E"),
-            ("Design", "broom","#FE8235"),
-            ("Peinture", "palette", "#F09E54"),
-            ("Autres", "unknown", "#373737")
-            
-        ]
-
-        for name, icon, color in categories:
-            Category.objects.get_or_create(
-                name=name,
-                defaults={
-                    "icon_name": icon,
-                    "color": color,
-                },
-            )
-
         self.stdout.write("✅ Categories ready")
 
         # 2️⃣ Admin user (env)

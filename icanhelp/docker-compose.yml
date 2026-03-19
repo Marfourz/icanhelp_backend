@@ -36,11 +36,5 @@ services:
       timeout: 5s
       retries: 5
 
-  db-adminer:
-    image: adminer
-    restart: unless-stopped
-    ports:
-      - "8082:8080"
-
 volumes:
   mysql_data:

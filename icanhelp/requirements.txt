@@ -1,4 +1,5 @@
 djangorestframework
+requests
 markdown
 django-filter
 daphne
@@ -9,4 +10,6 @@ gunicorn
 whitenoise
 dotenv
 mysqlclient
-
+pillow
+django-storages 
+boto3

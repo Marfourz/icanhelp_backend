@@ -8,12 +8,12 @@ from api.serializers import DiscussionSerializer
 from api.mixins import UserProfilMixin
 from django.db import transaction
 
+from api.models import UserCompetence
 from rest_framework import permissions, viewsets,status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins
-
 
 class InvitationViewSet(
     UserProfilMixin,
@@ -24,208 +24,251 @@ class InvitationViewSet(
     serializer_class = InvitationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-
     def get_queryset(self):
-        """Permet à un utilisateur de voir uniquement ses invitations (envoyées ou reçues)."""
         userProfil = self.get_user_profil()
-        query = Invitation.objects.filter(createdBy=userProfil).order_by('-createdAt') | Invitation.objects.filter(receiver=userProfil)
+        return (
+            Invitation.objects.filter(createdBy=userProfil).order_by('-createdAt') |
+            Invitation.objects.filter(receiver=userProfil)
+        )
 
-        return query
-
-    
     def create(self, request, *args, **kwargs):
-        """Override de la méthode create pour forcer l'assignation de createdBy."""
         user_profil = get_object_or_404(UserProfil, user=self.request.user)
-        
-        # Récupérer le receiver de la requête
         receiver_id = request.data.get("receiver")
-
-         # Assigner receiver en fonction de l'ID fourni
-        receiver_profil = get_object_or_404(UserProfil, id=receiver_id)
-
-        message = request.data.get("message")
-
-        receiverCompetence = request.data.get('receiver_competence')
-
-        senderCompetence = request.data.get('sender_competence')
-
+        competence_id = request.data.get("competence")
+        points = int(request.data.get('points', 0))
         type = request.data.get('type')
 
-        print("Invitation type", senderCompetence)
-
-        if type == InvitationType.LEARN:
-    
-            if not receiver_profil.get_personal_competences().filter(id=receiverCompetence).exists():
-                return Response(
-                        {"message": "Le profil ne possède pas les compétences demandées"},
-                        status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        print("after")
         if not receiver_id:
-            return Response({"message": "Le champ receiver est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"message": "Le champ receiver est obligatoire."}, status=400)
 
-        if receiver_id == user_profil.id:
-            return Response({"message": "Vous ne pouvez vous envoyer d'invitation."}, status=status.HTTP_400_BAD_REQUEST)
+        if int(receiver_id) == user_profil.id:
+            return Response({"message": "Vous ne pouvez vous envoyer d'invitation."}, status=400)
 
-        discussion = Discussion.get_or_create_between(receiver_profil, user_profil)
+        if not competence_id:
+            return Response({"message": "Le champ compétence est obligatoire."}, status=400)
 
+        receiver_profil = get_object_or_404(UserProfil, id=receiver_id)
+        competence = get_object_or_404(UserCompetence, id=competence_id)
 
-         # Création du premier message avec le texte de l'invitation
-        if message: 
-            message = Message.objects.create(
-                message=message,
-                discussion=discussion,
-                sender=user_profil
-            )
+        # Vérifier que la compétence appartient bien au receiver
+        if type == InvitationType.LEARN:
+            if not receiver_profil.get_personal_competences().filter(id=competence_id).exists():
+                return Response(
+                    {"message": "Le profil ne possède pas les compétences demandées"},
+                    status=400
+                )
 
-            discussion.lastMessage = message
+        # Le payeur est le sender si LEARN, le receiver si TEACH
+        payer = user_profil if type == InvitationType.LEARN else receiver_profil
 
-            discussion.save()
-
-        invitation_data = {
-            **request.data,
-            'createdBy': user_profil.id,
-            'receiver': receiver_profil.id,
-            'discussion': discussion.id,
-        }
-
-        serializer = CreateInvitationSerializer(data=invitation_data)
-
-        if serializer.is_valid():
-            serializer.save()
-        else :
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        discussion_serializer = DiscussionSerializer(discussion)
-
-        return Response(discussion_serializer.data, status=status.HTTP_201_CREATED)
-        
-    @action(detail=False, methods=['get'])
-    def sent(self, request):
-        """Lister les invitations envoyées par l'utilisateur."""
-        invitations = Invitation.objects.filter(createdBy=self.get_user_profil()).order_by('-createdAt')
-        serializer = self.get_serializer(invitations, many=True)
-        
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'])
-    def received(self, request):
-        """Lister les invitations reçues par l'utilisateur."""
-        invitations = Invitation.objects.filter(receiver=self.get_user_profil()).order_by('-createdAt')
-        serializer = self.get_serializer(invitations, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=['post'])
-    def accept(self, request, pk=None):
-        """Accepter une invitation et créer une discussion."""
-        invitation = get_object_or_404(Invitation, pk=pk)
-
-        if invitation.receiver != self.get_user_profil():
+        if not payer.has_enough_points(points):
+            available = payer.points - payer.pointsToLose
             return Response(
-                {"message": "Vous n'êtes pas autorisé à accepter cette invitation."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        # Mise à jour du statut de l'invitation
-        invitation.state = InvitationState.ACCEPTED
-        invitation.save()
-
-        sender = invitation.createdBy
-        receiver = self.get_user_profil()
-
-       # Mise à jour du sender
-        sender.update_points_after_invitation(
-            points_to_win=invitation.senderPoints,
-            points_to_lose=invitation.receiverPoints,
-            is_sender=True
-        )
-
-        # Mise à jour du receiver
-        receiver.update_points_after_invitation(
-            points_to_win=invitation.receiverPoints,
-            points_to_lose=invitation.senderPoints,
-            is_sender=False
-        )
-        
-        # Création de la discussion
-        discussion = Discussion.get_or_create_between(sender, receiver)
-
-        # # Création du premier message avec le texte de l'invitation
-        # if invitation.message: 
-        #     message = Message.objects.create(
-        #         message=invitation.message,
-        #         discussion=discussion,
-        #         sender=invitation.createdBy
-        #     )
-
-        #     discussion.lastMessage = message
-
-        #     discussion.save()
-
-        # # Sérialisation et réponse avec la discussion
-        # discussion_serializer = DiscussionSerializer(discussion)
-
-        serializer = self.get_serializer(invitation)
-    
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-    @action(detail=True, methods=['post'])
-    def validate(self, request, pk=None):
-        """Refuser une invitation."""
-        invitation = get_object_or_404(Invitation, pk=pk)
-
-        sender = invitation.createdBy
-        receiver = invitation.receiver
-
-        if sender !=self.get_user_profil():
-            return Response(
-                {"message": "Vous n'êtes pas autorisé à valider cette invitation."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        if invitation.state != InvitationState.ACCEPTED:
-            return Response(
-                {"message": "Seules les invitations en acceptée peuvent être validées."},
+                {"message": f"Points insuffisants. Disponibles : {available}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         with transaction.atomic():
-            # Mise à jour des points
-            sender.pointsToLose -= invitation.receiverPoints
-            sender.pointsToWin -= invitation.senderPoints
-            sender.points += invitation.senderPoints
-            sender.save()
+            discussion = Discussion.get_or_create_between(receiver_profil, user_profil)
+            message = request.data.get("message")
 
-            receiver.pointsToWin -= invitation.receiverPoints
-            receiver.pointsToLose -= invitation.senderPoints
-            receiver.points += invitation.receiverPoints
-            receiver.save()
+            if message:
+                msg = Message.objects.create(
+                    message=message,
+                    discussion=discussion,
+                    sender=user_profil
+                )
+                discussion.lastMessage = msg
+                discussion.save()
 
-            # Validation de l’invitation
-            invitation.state = InvitationState.VALIDATED
-            invitation.save(update_fields=["state"])
+            serializer = CreateInvitationSerializer(data={
+                **request.data,
+                'createdBy': user_profil.id,
+                'receiver': receiver_profil.id,
+                'discussion': discussion.id,
+                'competence': competence.id,
+                'points': points,
+                'pointsWasChanged': points != competence.points
+            })
 
-        serializer = self.get_serializer(invitation)
-        return Response(serializer.data)
-    
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
+
+            serializer.save()
+
+        return Response(DiscussionSerializer(discussion).data, status=201)
+
+    @action(detail=False, methods=['get'])
+    def sent(self, request):
+        invitations = Invitation.objects.filter(createdBy=self.get_user_profil()).order_by('-createdAt')
+        return Response(self.get_serializer(invitations, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def received(self, request):
+        invitations = Invitation.objects.filter(receiver=self.get_user_profil()).order_by('-createdAt')
+        return Response(self.get_serializer(invitations, many=True).data)
 
     @action(detail=True, methods=['post'])
-    def reject(self, request, pk=None):
-        """Refuser une invitation."""
+    def accept(self, request, pk=None):
         invitation = get_object_or_404(Invitation, pk=pk)
 
-        if invitation.receiver !=self.get_user_profil():
+        if invitation.receiver != self.get_user_profil():
+            return Response({"message": "Non autorisé."}, status=status.HTTP_403_FORBIDDEN)
+
+        if invitation.state != InvitationState.PENDING:
+            return Response({"message": "Invitation déjà traitée."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            invitation.state = InvitationState.ACCEPTED
+            invitation.save()
+
+            invitation.createdBy.accept_invitation(invitation)
+            invitation.receiver.accept_invitation(invitation)
+
+        return Response(self.get_serializer(invitation).data, status=status.HTTP_200_OK)
+
+    # ── Proposer un créneau ──────────────────────────────────────
+    @action(detail=True, methods=['post'])
+    def propose_schedule(self, request, pk=None):
+        """
+        L'un des deux participants propose une date, heure et lieu.
+        L'autre doit confirmer via confirm_schedule.
+        """
+        invitation = get_object_or_404(Invitation, pk=pk)
+        user_profil = self.get_user_profil()
+
+        if invitation.state not in [
+            InvitationState.ACCEPTED, InvitationState.SCHEDULED
+        ]:
             return Response(
-                {"message": "Vous n'êtes pas autorisé à refuser cette invitation."},
-                status=status.HTTP_403_FORBIDDEN
+                {"message": "L'invitation doit être acceptée pour planifier."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        invitation.state = InvitationState.REJECTED
-        invitation.save()
+        if user_profil not in [invitation.createdBy, invitation.receiver]:
+            return Response({"message": "Non autorisé."},
+                            status=status.HTTP_403_FORBIDDEN)
 
-        serializer = self.get_serializer(invitation)
-        return Response(serializer.data)
-    
+        scheduled_at    = request.data.get('scheduledAt')
+        scheduled_place = request.data.get('scheduledPlace')
+
+        if not scheduled_at:
+            return Response({"message": "La date est obligatoire."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        invitation.scheduledAt    = scheduled_at
+        invitation.scheduledPlace = scheduled_place
+        invitation.scheduledBy    = user_profil
+        # Repasse en ACCEPTED pour que l'autre confirme
+        invitation.state = InvitationState.ACCEPTED
+        invitation.save(update_fields=[
+            'scheduledAt', 'scheduledPlace', 'scheduledBy', 'state'
+        ])
+
+        return Response(self.get_serializer(invitation).data)
+
+
+    # ── Confirmer le créneau proposé ────────────────────────────
+    @action(detail=True, methods=['post'])
+    def confirm_schedule(self, request, pk=None):
+        """
+        L'autre participant confirme la proposition de créneau.
+        L'invitation passe en SCHEDULED.
+        """
+        invitation = get_object_or_404(Invitation, pk=pk)
+        user_profil = self.get_user_profil()
+
+        if invitation.state != InvitationState.ACCEPTED:
+            return Response(
+                {"message": "Aucun créneau en attente de confirmation."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if invitation.scheduledBy == user_profil:
+            return Response(
+                {"message": "Tu ne peux pas confirmer ton propre créneau."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if user_profil not in [invitation.createdBy, invitation.receiver]:
+            return Response({"message": "Non autorisé."},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        invitation.state = InvitationState.SCHEDULED
+        invitation.save(update_fields=['state'])
+
+        return Response(self.get_serializer(invitation).data)
+
+
+    # ── Valider la séance (double validation) ───────────────────
+    @action(detail=True, methods=['post'])
+    def validate(self, request, pk=None):
+        """
+        Chaque participant valide indépendamment.
+        Le transfert de points s'effectue quand les deux ont validé.
+        """
+        invitation = get_object_or_404(Invitation, pk=pk)
+        user_profil = self.get_user_profil()
+
+        if invitation.state != InvitationState.SCHEDULED:
+            return Response(
+                {"message": "La séance doit être confirmée avant validation."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if user_profil not in [invitation.createdBy, invitation.receiver]:
+            return Response({"message": "Non autorisé."},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            if user_profil == invitation.createdBy:
+                invitation.validatedByCreator = True
+            else:
+                invitation.validatedByReceiver = True
+
+            invitation.save(update_fields=[
+                'validatedByCreator', 'validatedByReceiver'
+            ])
+
+            # Les deux ont validé → transfert de points
+            if invitation.validatedByCreator and invitation.validatedByReceiver:
+                invitation.createdBy.validate_invitation(invitation)
+                invitation.receiver.validate_invitation(invitation)
+                invitation.state = InvitationState.VALIDATED
+                invitation.save(update_fields=['state'])
+
+        return Response(self.get_serializer(invitation).data)
+
+
+    # ── Rejeter / annuler ────────────────────────────────────────
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """
+        Fonctionne depuis PENDING, ACCEPTED et SCHEDULED.
+        """
+        invitation = get_object_or_404(Invitation, pk=pk)
+        user_profil = self.get_user_profil()
+
+        if user_profil not in [invitation.createdBy, invitation.receiver]:
+            return Response({"message": "Non autorisé."},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if invitation.state not in [
+            InvitationState.PENDING,
+            InvitationState.ACCEPTED,
+            InvitationState.SCHEDULED,
+        ]:
+            return Response({"message": "Invitation déjà traitée."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            if invitation.state in [
+                InvitationState.ACCEPTED, InvitationState.SCHEDULED
+            ]:
+                invitation.createdBy.reject_invitation(invitation)
+                invitation.receiver.reject_invitation(invitation)
+
+            invitation.state = InvitationState.REJECTED
+            invitation.save(update_fields=['state'])
+
+        return Response(self.get_serializer(invitation).data)

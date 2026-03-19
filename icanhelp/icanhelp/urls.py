@@ -17,8 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path,include
 from api.views import *
+from django.conf.urls.static import static
+from django.conf import settings
 
 
+from api.views.user_competence import CompetenceDefaultPointsView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.urls import re_path
@@ -54,11 +57,9 @@ urlpatterns = [
     path('api/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/signup', SignupView.as_view(), name='signup'),
     path('user_profil/competences', UserCompetencesAPIView.as_view(), name='user-competences'),
+    path('user_profil/avatar', views.ChangeAvatarApiView.as_view(), name='user-avatar'),
     path('user_profil/competences/<int:id>', UserCompetencesAPIView.as_view(), name='user-competence-detail'),
     #path('invitations', InvitationViewSet.as_view(), name='invitations'),
+    path('competences/default-points/', CompetenceDefaultPointsView.as_view(), name='competences-default-points'),
 
-   
-
-]
-
-
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,5 +1,6 @@
 
 from django.db import models
+from api.utils.upload_paths import get_upload_competence_image__path
 
 class CompetenceType(models.TextChoices):
     PERSONAL = "personal", "Personnelle"
@@ -20,7 +21,8 @@ class UserCompetence(models.Model):
         choices=CompetenceType.choices, 
         default=CompetenceType.PERSONAL
     )
-    #file = models.ImageField(null=True)
+    image = models.FileField(upload_to= get_upload_competence_image__path, blank=True, null=True,default=None)
+
 
     def __str__(self):
         return self.title

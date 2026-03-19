@@ -1,0 +1,79 @@
+services:
+  web:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - '8001:8000'
+    env_file: 
+     - .env.local
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      minio:
+        condition: service_healthy
+    entrypoint: /app/entrypoint.sh
+
+  db:
+    env_file: 
+     - .env.local
+    image: mysql:8.4
+    container_name: icanhelp_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    env_file: 
+     - .env.local
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    env_file: 
+     - .env.local
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_USER: ${MINIO_USER}
+      MINIO_PASSWORD: ${MINIO_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    entrypoint: ["/bin/sh", "-c", "mc alias set local http://minio:9000 $MINIO_USER $MINIO_PASSWORD && mc mb local/$MINIO_BUCKET --ignore-existing && mc anonymous set public local/$MINIO_BUCKET"]
+
+  db-adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+
+volumes:
+  mysql_data:
+  minio_data:

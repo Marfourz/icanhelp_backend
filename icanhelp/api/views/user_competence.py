@@ -1,13 +1,18 @@
 from rest_framework import permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from api.models import UserCompetence
+from api.models import UserCompetence, Category
 from api.serializers import UserCompetenceCreateSerializer
 from api.mixins import UserProfilMixin
 from api.models.UserCompetence import CompetenceType
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.shortcuts import get_object_or_404
+
+DEFAULT_POINTS_PER_HOUR = 1
 
 class UserCompetencesAPIView(UserProfilMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [FormParser, MultiPartParser, JSONParser]
 
     def get(self, request):
         type = request.query_params.get('type')
@@ -18,11 +23,13 @@ class UserCompetencesAPIView(UserProfilMixin, APIView):
         if type in [CompetenceType.DESIRED, CompetenceType.PERSONAL]:
             queryset = queryset.filter(type=type)
 
-        serializer = UserCompetenceCreateSerializer(queryset.order_by('-createdAt'), many=True)
+        serializer = UserCompetenceCreateSerializer(queryset.order_by('-createdAt'), many=True,context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = UserCompetenceCreateSerializer(data=request.data)
+        serializer = UserCompetenceCreateSerializer(
+            data=request.data,
+            context={'request': request} )
         if serializer.is_valid():
             user_profil = self.get_user_profil()
             competence = serializer.create(serializer.validated_data, user_profil=user_profil)
@@ -57,7 +64,7 @@ class UserCompetencesAPIView(UserProfilMixin, APIView):
         except UserCompetence.DoesNotExist:
             return Response({"error": "Compétence non trouvée."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = UserCompetenceCreateSerializer(competence, data=request.data, partial=True)
+        serializer = UserCompetenceCreateSerializer(competence, data=request.data, partial=True, context={'request': request})
 
         if serializer.is_valid():
             serializer.save()
@@ -67,3 +74,52 @@ class UserCompetencesAPIView(UserProfilMixin, APIView):
             })
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class CompetenceDefaultPointsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        category_id = request.query_params.get('category')
+        type = request.query_params.get('type')
+
+        if type not in [CompetenceType.DESIRED, CompetenceType.PERSONAL]:
+            return Response({"error": "Type de compétence non trouvé."}, status=400)
+
+        category = get_object_or_404(Category, id=category_id)
+
+        competences = UserCompetence.objects.filter(
+            type=type,
+            category=category,
+            points__isnull=False,
+            duration__isnull=False,
+            duration__gt=0
+        )
+
+        if not competences.exists():
+            return Response({
+                "points_per_hour": DEFAULT_POINTS_PER_HOUR,
+                "based_on": 0,
+            })
+
+        taux_list = sorted([float(c.points / c.duration) for c in competences])
+
+        q1 = taux_list[len(taux_list) // 4]
+        q3 = taux_list[(3 * len(taux_list)) // 4]
+        iqr = q3 - q1
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+
+        filtered = [t for t in taux_list if lower <= t <= upper]
+
+        if not filtered:
+            return Response({
+                "points_per_hour": DEFAULT_POINTS_PER_HOUR,
+                "based_on": 0,
+            })
+
+        taux_moyen = round(sum(filtered) / len(filtered), 2)
+
+        return Response({
+            "points_per_hour": taux_moyen,
+            "based_on": len(filtered),
+        })

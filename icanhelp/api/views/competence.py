@@ -9,12 +9,14 @@ from django.db.models import Q, F
 from django.db.models import Case, When, Value, IntegerField, FloatField
 from django.db.models.functions import ACos, Cos, Radians, Sin, Coalesce
 from rest_framework import mixins
+from api.mixins import UserProfilMixin
 
 
 class CompetenceViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
+    UserProfilMixin
 ):
     permission_classes = [permissions.IsAuthenticated]
     queryset = UserCompetence.objects.all()
@@ -46,7 +48,6 @@ class CompetenceViewSet(
                 pass  # Ignore mauvaise valeur
 
         return queryset
-        
     
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
@@ -55,24 +56,27 @@ class CompetenceViewSet(
         category_id = request.query_params.get('category_id', None)
         type = request.query_params.get('type', None)
 
-        # 🔎 Catégories de l'utilisateur
         my_categories = list(user_profil.competences.values_list("category_id", flat=True))
 
-        # Base queryset : exclure mes propres compétences
         queryset = UserCompetence.objects.exclude(user=user_profil)
 
-        # Filtre commun
         filters = Q()
         if type:
             filters &= Q(type=type)
         if q:
             filters &= Q(title__icontains=q) | Q(description__icontains=q)
         if category_id:
-            filters &= Q(category_id=category_id)
+            # Récupérer la catégorie + toutes ses sous-catégories
+            category_ids = [int(category_id)]
+            children_ids = Category.objects.filter(
+                parent_id=category_id
+            ).values_list('id', flat=True)
+            category_ids += list(children_ids)
+
+            filters &= Q(category_id__in=category_ids)  # ← __in au lieu de =
 
         queryset = queryset.filter(filters)
 
-        # Priorité : mes catégories d'abord
         queryset = queryset.annotate(
             in_my_categories=Case(
                 When(category_id__in=my_categories, then=Value(1)),
@@ -81,9 +85,7 @@ class CompetenceViewSet(
             )
         )
 
-        # Distance si lat/lon renseignées
         if user_profil.location_lat and user_profil.location_lon:
-            
             queryset = queryset.annotate(
                 distance=6371 * ACos(
                     Cos(Radians(user_profil.location_lat)) *
@@ -93,7 +95,6 @@ class CompetenceViewSet(
                     Sin(Radians(Coalesce(F('user__location_lat'), Value(0.0, output_field=FloatField()))))
                 )
             )
-            # Tri : mes catégories par distance, puis les autres par distance
             queryset = queryset.order_by(
                 '-in_my_categories',
                 Case(
@@ -103,11 +104,7 @@ class CompetenceViewSet(
             )
         else:
             queryset = queryset.order_by('-in_my_categories')
-        
-        for competence in queryset[:15]:  # juste les 10 premiers pour tester
-            print(f"{competence.title} - Distance: {getattr(competence, 'distance', 'N/A')} km")
 
-        # Pagination native
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
