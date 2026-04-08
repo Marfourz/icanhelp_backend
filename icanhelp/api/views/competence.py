@@ -18,7 +18,11 @@ class CompetenceViewSet(
     viewsets.GenericViewSet,
     UserProfilMixin
 ):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        # La liste est publique, les autres actions requièrent l'authentification
+        if self.action == 'list':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
     queryset = UserCompetence.objects.all()
     serializer_class = UserCompetenceCreateSerializer
     

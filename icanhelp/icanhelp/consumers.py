@@ -1,30 +1,30 @@
 import json
+from urllib.parse import parse_qs
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.layers import get_channel_layer
 from rest_framework_simplejwt.tokens import AccessToken
 from channels.db import database_sync_to_async
-from rest_framework.exceptions import AuthenticationFailed
 
 from api.models import Discussion
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print("Try to connect....")
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
-
-        # Vérifiez que channel_layer est initialisé
         self.channel_layer = get_channel_layer()
 
-        
-       # Vérifier si l'utilisateur est authentifié via le token
-        token_key = self.scope.get('query_string').decode('utf-8').split('=')[1]
+        # Parser le token depuis la query string (supporte token=xxx&autre=yyy)
+        query_params = parse_qs(self.scope.get('query_string', b'').decode())
+        token_list = query_params.get('token', [])
 
-        self.scope['user'] = await self.get_user_from_token(token_key)
+        if not token_list:
+            await self.close(code=4001)
+            return
 
+        self.scope['user'] = await self.get_user_from_token(token_list[0])
 
         if self.scope['user'] is None:
-            await self.close()
+            await self.close(code=4001)
             return
         
         # Vérifier si l'utilisateur fait partie de la discussion
@@ -90,8 +90,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             access_token = AccessToken(token_key)
             return access_token.payload.get('user_id')
-        except Exception as e:
-            raise AuthenticationFailed('Invalid token')
+        except Exception:
+            return None
 
     @database_sync_to_async
     def get_discussion(self, room_name, user_id):

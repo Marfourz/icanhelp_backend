@@ -1,7 +1,8 @@
 from api.models import UserProfil
-from api.serializers import MyProfilSerializer, UserProfilSerializer, UserSerializer,AvatarSerializer
+from api.serializers import MyProfilSerializer, UserProfilSerializer, UserSerializer, AvatarSerializer
 from django.contrib.auth.models import User
 from api.mixins import UserProfilMixin
+from api.utils.errors import validation_error
 
 from api.views.upload_image import ImageUploadApiView
 from rest_framework import permissions, viewsets, status
@@ -21,13 +22,18 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAdminUser]
 
 class UserProfilViewSet(
-    UserProfilMixin, 
+    UserProfilMixin,
     viewsets.GenericViewSet,
-    mixins.ListModelMixin
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
 ):
     queryset = UserProfil.objects.all()
-    serializer_class = UserProfilSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return MyProfilSerializer
+        return UserProfilSerializer
 
     @action(detail=False, methods=['get'], url_path='my_profil')
     def my_profil(self, request):
@@ -42,11 +48,12 @@ class UserProfilViewSet(
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return validation_error(serializer.errors)
     
 
 class ChangeAvatarApiView(ImageUploadApiView, UserProfilMixin):
     serializer_class = AvatarSerializer
+    image_field = 'avatar'
 
     def get_instance(self, request, **kwargs):
         return self.get_user_profil()

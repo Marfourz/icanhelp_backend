@@ -37,7 +37,7 @@ class Invitation(models.Model):
         'api.UserCompetence', blank=True, null=True, on_delete=models.CASCADE,
     )
     points = models.PositiveIntegerField(blank=True, default=0)  # ← un seul champ points
-    message = models.TextField()
+    message = models.TextField(blank=True, default='')
     duration = models.PositiveIntegerField(blank=True, null=True)
     discussion = models.ForeignKey(
         'api.Discussion', blank=True, related_name="invitations", null=True, on_delete=models.PROTECT,

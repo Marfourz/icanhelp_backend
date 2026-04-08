@@ -1,0 +1,13 @@
+Bonjour {{ user.username }},
+
+Merci de vous être inscrit sur Skillou !
+
+Pour confirmer votre adresse email, cliquez sur le lien ci-dessous :
+
+{{ activate_url }}
+
+Ce lien est valable 3 jours.
+
+Si vous n'avez pas créé de compte sur Skillou, ignorez cet email.
+
+L'équipe Skillou

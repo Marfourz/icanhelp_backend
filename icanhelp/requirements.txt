@@ -4,12 +4,15 @@ markdown
 django-filter
 daphne
 channels
+asgiref>=3.8.1
 django-cors-headers
 djangorestframework-simplejwt
 gunicorn
 whitenoise
-dotenv
+python-dotenv
 mysqlclient
 pillow
-django-storages 
+django-storages
 boto3
+django-allauth[socialaccount]
+dj-rest-auth[with_social]

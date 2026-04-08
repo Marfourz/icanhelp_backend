@@ -26,7 +26,7 @@ class ImageUploadSerializer(serializers.ModelSerializer):
 
         setattr(instance, field_name, new_image)
 
-        if old_image and old_image != new_image.name:
+        if old_image and new_image and old_image != new_image.name:
             getattr(instance, field_name).storage.delete(old_image)
 
         instance.save()
@@ -76,10 +76,18 @@ class UserPulicSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email']
 
+
 class CreateUserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True)
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password']
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Un compte avec cet email existe déjà.")
+        return value.lower()
         
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -167,20 +175,28 @@ class DiscussionSerializer(serializers.ModelSerializer):
     lastMessage = serializers.SerializerMethodField()
     lastOpenAt = serializers.DateTimeField(read_only=True)
     nbMessagesNotRead = serializers.IntegerField(read_only=True)
+    users = serializers.SerializerMethodField()
+    createdBy = UserProfilSerializer()
 
     class Meta:
-        depth = 2
         model = Discussion
-        fields = '__all__'
+        fields = ['id', 'name', 'createdAt', 'updatedAt', 'createdBy', 'users', 'lastMessage', 'lastOpenAt', 'nbMessagesNotRead']
 
     def get_lastMessage(self, obj):
         if obj.lastMessage:
             return {
                 "content": obj.lastMessage.message,
-                "sender": obj.lastMessage.sender.id,
-                "created_at": obj.lastMessage.createdAt
+                "sender": obj.lastMessage.sender_id,
+                "created_at": obj.lastMessage.createdAt,
             }
         return None
+
+    def get_users(self, obj):
+        return UserProfilSerializer(
+            obj.users.select_related('user').all(),
+            many=True,
+            context=self.context,
+        ).data
 
 class InvitationSerializer(serializers.ModelSerializer):
     discussion = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -273,3 +289,22 @@ class UserCompetenceCreateSerializer(ImageUploadSerializer):
             instance.save()
 
         return instance
+
+
+# ─── dj-rest-auth ─────────────────────────────────────────────────────────────
+from dj_rest_auth.registration.serializers import RegisterSerializer as BaseRegisterSerializer
+
+
+class RegisterSerializer(BaseRegisterSerializer):
+    """Inscription via /auth/registration/ avec email obligatoire et unique."""
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Un compte avec cet email existe déjà.")
+        return value.lower()
+
+    def get_cleaned_data(self):
+        data = super().get_cleaned_data()
+        data['email'] = self.validated_data.get('email', '')
+        return data

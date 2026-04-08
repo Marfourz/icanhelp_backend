@@ -1,6 +1,7 @@
 import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from api.models import Category, UserProfil
 
 User = get_user_model()
@@ -9,6 +10,13 @@ class Command(BaseCommand):
     help = "Seed database with categories and admin user"
 
     def handle(self, *args, **options):
+
+        # 1️⃣ Site domain (supprime "example.com" dans les emails)
+        site_domain = os.getenv('SITE_DOMAIN', 'localhost:8000')
+        Site.objects.update_or_create(
+            id=1,
+            defaults={'domain': site_domain, 'name': 'Skillou'},
+        )
 
         self.stdout.write("✅ Categories ready")
 

@@ -15,18 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
 from api.views import *
 from django.conf.urls.static import static
 from django.conf import settings
 
-
 from api.views.user_competence import CompetenceDefaultPointsView
+from allauth.account.views import PasswordResetFromKeyView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.urls import re_path
 from . import consumers
-
 
 from api import views
 
@@ -59,7 +58,19 @@ urlpatterns = [
     path('user_profil/competences', UserCompetencesAPIView.as_view(), name='user-competences'),
     path('user_profil/avatar', views.ChangeAvatarApiView.as_view(), name='user-avatar'),
     path('user_profil/competences/<int:id>', UserCompetencesAPIView.as_view(), name='user-competence-detail'),
-    #path('invitations', InvitationViewSet.as_view(), name='invitations'),
     path('competences/default-points/', CompetenceDefaultPointsView.as_view(), name='competences-default-points'),
+
+    # Auth (email verification, password reset, registration)
+    path('auth/', include('dj_rest_auth.urls')),
+    path('auth/registration/', include('dj_rest_auth.registration.urls')),
+    path('accounts/', include('allauth.urls')),
+
+    # Alias requis par dj-rest-auth pour construire le lien dans le mail de reset
+    path(
+        'accounts/password/reset/confirm/<uidb36>/<key>/',
+        PasswordResetFromKeyView.as_view(),
+        name='password_reset_confirm',
+    ),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
