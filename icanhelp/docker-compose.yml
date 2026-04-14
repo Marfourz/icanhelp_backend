@@ -1,40 +1,54 @@
 services:
   web:
     build: .
+    restart: unless-stopped
     volumes:
       - .:/app
-    ports:
-      - '8001:8000'
-    
     depends_on:
       db:
         condition: service_healthy
         restart: true
     entrypoint: /app/entrypoint.sh gunicorn
+    networks:
+      - lemobici_network
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.skillou-api.rule=Host(`api.skillou.com`)"
+      - "traefik.http.routers.skillou-api.entrypoints=websecure"
+      - "traefik.http.routers.skillou-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.skillou-api.loadbalancer.server.port=8000"
+      # Redirection HTTP → HTTPS
+      - "traefik.http.routers.skillou-api-http.rule=Host(`api.skillou.com`)"
+      - "traefik.http.routers.skillou-api-http.entrypoints=web"
+      - "traefik.http.routers.skillou-api-http.middlewares=https-redirect"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
 
-  
   db:
     image: mysql:8.4
     container_name: icanhelp_db
     restart: unless-stopped
-
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-
     volumes:
       - mysql_data:/var/lib/mysql
-
-    ports:
-      - "${DB_PORT}:${DB_PORT}"
-
+    networks:
+      - internal
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p${DB_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+networks:
+  lemobici_network:
+    external: true   # réseau Traefik partagé sur le VPS
+  internal:
+    driver: bridge
 
 volumes:
   mysql_data:
