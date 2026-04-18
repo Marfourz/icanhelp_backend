@@ -1,4 +1,17 @@
 services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme/acme.json
+    networks:
+      - proxy
+
   web:
     build: .
     restart: unless-stopped
@@ -10,7 +23,7 @@ services:
         restart: true
     entrypoint: /app/entrypoint.sh gunicorn
     networks:
-      - lemobici_network
+      - proxy
       - internal
     labels:
       - "traefik.enable=true"
@@ -21,9 +34,9 @@ services:
       # Redirection HTTP → HTTPS
       - "traefik.http.routers.skillou-api-http.rule=Host(`api.skillou.com`)"
       - "traefik.http.routers.skillou-api-http.entrypoints=web"
-      - "traefik.http.routers.skillou-api-http.middlewares=https-redirect"
-      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.skillou-api-http.middlewares=skillou-https-redirect"
+      - "traefik.http.middlewares.skillou-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.skillou-https-redirect.redirectscheme.permanent=true"
 
   db:
     image: mysql:8.4
@@ -45,8 +58,8 @@ services:
       retries: 5
 
 networks:
-  lemobici_network:
-    external: true   # réseau Traefik partagé sur le VPS
+  proxy:
+    driver: bridge
   internal:
     driver: bridge
 

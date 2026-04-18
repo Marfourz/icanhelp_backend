@@ -1,0 +1,15 @@
+api:
+  dashboard: true
+  insecure: true  # dashboard accessible sur :8080
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: proxy
+
+log:
+  level: DEBUG
