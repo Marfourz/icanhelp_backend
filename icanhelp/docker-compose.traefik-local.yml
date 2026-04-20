@@ -1,17 +1,19 @@
 services:
   traefik:
-    volumes:
-      - ./traefik/traefik.local.yml:/traefik.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    image: traefik:v3.3
     ports:
       - "80:80"
-      - "8080:8080"  # dashboard Traefik
+      - "8080:8080"   # dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.local.yml:/traefik.yml:ro
+    networks:
+      - proxy
 
   web:
     env_file:
       - .env.local
     labels:
-      # Surcharge : HTTP uniquement, domaine local, pas de TLS
       - "traefik.enable=true"
       - "traefik.http.routers.skillou-api.rule=Host(`api.skillou.local`)"
       - "traefik.http.routers.skillou-api.entrypoints=web"
@@ -20,3 +22,8 @@ services:
   db:
     env_file:
       - .env.local
+
+networks:
+  proxy:
+    name: proxy
+    driver: bridge
