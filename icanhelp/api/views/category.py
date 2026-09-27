@@ -18,6 +18,13 @@ class CategoryView(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Category.objects.all()
+
+        # Le filtre "racines par défaut" ne concerne que le listing : une action de
+        # détail (retrieve/update/destroy) doit pouvoir cibler n'importe quel id,
+        # sous-catégorie ou non.
+        if self.action != 'list':
+            return queryset
+
         search = self.request.query_params.get('search')
         parent_id = self.request.query_params.get('parent')
 

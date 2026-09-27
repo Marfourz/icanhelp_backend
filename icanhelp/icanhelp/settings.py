@@ -178,6 +178,7 @@ SIMPLE_JWT = {
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
@@ -194,10 +195,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # ─── Email ────────────────────────────────────────────────────────────────────
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Toujours du vrai SMTP, y compris en local (où EMAIL_HOST pointe vers Mailpit,
+# http://localhost:8025). Le backend "console" affiche le mail encodé en
+# quoted-printable brut, ce qui coupe l'URL de reset en plein milieu du token
+# dès qu'elle dépasse ~76 caractères et la rend invalide si on la copie depuis les logs.
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
@@ -205,12 +207,15 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@skillou.com')
 
-# Port 465 → SSL,  Port 587 → TLS (STARTTLS)
+# Port 465 → SSL, Port 587 → TLS (STARTTLS), autre port (ex: 1025 pour Mailpit) → aucun
 if EMAIL_PORT == 465:
     EMAIL_USE_SSL = True
     EMAIL_USE_TLS = False
-else:
+elif EMAIL_PORT == 587:
     EMAIL_USE_TLS = True
+    EMAIL_USE_SSL = False
+else:
+    EMAIL_USE_TLS = False
     EMAIL_USE_SSL = False
 
 # ─── django-allauth ───────────────────────────────────────────────────────────
@@ -274,13 +279,17 @@ else:
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     }
     }
-    AWS_S3_ENDPOINT_URL = f"https://{env('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com"
+    AWS_S3_ENDPOINT_URL = f"https://{os.getenv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com"
     AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
     AWS_S3_REGION_NAME = "auto"
     AWS_S3_FILE_OVERWRITE = False
     AWS_QUERYSTRING_AUTH = False
+    # Domaine public du bucket (ex: pub-xxxx.r2.dev, ou un domaine custom type cdn.skillou.com,
+    # sans https:// ni slash final). Sans ça, les URLs générées pointent vers l'endpoint S3
+    # privé et renvoient un 403 dans le navigateur.
+    AWS_S3_CUSTOM_DOMAIN = os.getenv("R2_PUBLIC_DOMAIN")
     
 
 

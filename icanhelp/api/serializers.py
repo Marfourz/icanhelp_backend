@@ -137,35 +137,50 @@ class AvatarSerializer(ImageUploadSerializer):
     def validate_avatar(self, value):
         return self.validate_image_file(value)
         
+class AvailabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Availability
+        fields = '__all__'
+        read_only_fields = ['user']
+
+
 class MyProfilSerializer(ImageUploadSerializer):
 
     avatar = serializers.SerializerMethodField()
     nb_skill_learn_finished = serializers.SerializerMethodField()
     nb_skill_learn_started = serializers.SerializerMethodField()
     competences = serializers.SerializerMethodField()
+    availabilities = serializers.SerializerMethodField()
 
     user = UserSerializer()
-    
+
     class Meta:
         depth = 2
         model = UserProfil
         fields = '__all__'
         ordering = ['id']
-    
+
     def get_nb_skill_learn_started(self, obj):
         return obj.sendInvitations.exclude(state="PENDING").count()
 
     def get_nb_skill_learn_finished(self, obj):
         return obj.sendInvitations.filter(state=InvitationState.VALIDATED).count()
-    
+
     def get_avatar(self, obj):
        return self.get_image_url(obj,'avatar')
-    
+
     def get_competences(self, obj):
         competences = obj.competences.all()
 
         return UserCompetenceCreateSerializer(
             competences,
+            many=True,
+            context=self.context
+        ).data
+
+    def get_availabilities(self, obj):
+        return AvailabilitySerializer(
+            obj.availabilities.all(),
             many=True,
             context=self.context
         ).data
@@ -198,38 +213,43 @@ class DiscussionSerializer(serializers.ModelSerializer):
             context=self.context,
         ).data
 
-class InvitationSerializer(serializers.ModelSerializer):
-    discussion = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    createdBy = UserProfilSerializer()
-    class Meta:
-        depth = 3
-        model = Invitation
-        fields = '__all__'
-        ordering = ['-createdAt']
-
-class CreateInvitationSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = Invitation
-        fields = ['id', 'receiver', 'createdBy', 'competence','points', 'duration', 'message', 'discussion', 'type']
-
 
 class CategorySerializer(ImageUploadSerializer):
     image = serializers.SerializerMethodField()
+    image_upload = serializers.ImageField(write_only=True, required=False)
+
     class Meta:
         model = Category
         fields = '__all__'
-    
+
     def get_image(self, obj):
         return self.get_image_url(obj, 'image')
 
-    def validate_image(self, value):
+    def validate_image_upload(self, value):
         return self.validate_image_file(value)
 
+    def create(self, validated_data):
+        image_upload = validated_data.pop('image_upload', None)
+        instance = Category.objects.create(**validated_data)
+
+        if image_upload:
+            self.save_image_from_upload(instance, 'image', image_upload)
+
+        return instance
+
     def update(self, instance, validated_data):
-        return self.update_image(instance, validated_data, 'image')
-  
+        image_upload = validated_data.pop('image_upload', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if image_upload:
+            self.save_image_from_upload(instance, 'image', image_upload)
+        else:
+            instance.save()
+
+        return instance
+
 
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -289,6 +309,27 @@ class UserCompetenceCreateSerializer(ImageUploadSerializer):
             instance.save()
 
         return instance
+
+
+class InvitationSerializer(serializers.ModelSerializer):
+    discussion = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    createdBy = UserProfilSerializer()
+    receiver = UserProfilSerializer()
+    competence = UserCompetenceCreateSerializer(read_only=True)
+    cancelledBy = UserProfilSerializer(read_only=True, allow_null=True)
+
+    class Meta:
+        model = Invitation
+        fields = '__all__'
+        ordering = ['-createdAt']
+
+class CreateInvitationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Invitation
+        fields = ['id', 'receiver', 'createdBy', 'competence', 'points', 'duration',
+                  'message', 'discussion', 'type', 'scheduledAt', 'scheduledPlace']
 
 
 # ─── dj-rest-auth ─────────────────────────────────────────────────────────────

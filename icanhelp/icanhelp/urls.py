@@ -38,6 +38,7 @@ router.register(r'invitations', InvitationViewSet, basename="invitation")
 router.register(r'discussions', views.DiscussionViewSet, basename='discussion')
 router.register(r'category', views.CategoryView, basename='category')
 router.register(r'competences', views.CompetenceViewSet,  basename='competence')
+router.register(r'availabilities', views.AvailabilityViewSet, basename='availability')
 
 
 websocket_urlpatterns = [

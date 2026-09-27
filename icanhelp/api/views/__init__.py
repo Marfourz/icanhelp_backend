@@ -6,3 +6,4 @@ from .discussion import DiscussionViewSet
 from .user_competence import UserCompetencesAPIView
 from .category import CategoryView
 from .competence import CompetenceViewSet
+from .availability import AvailabilityViewSet

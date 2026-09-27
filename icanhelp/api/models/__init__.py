@@ -3,6 +3,8 @@ from .Invitation import Invitation
 from .Invitation import InvitationState
 from .Invitation import InvitationType
 
+from .Availability import Availability, PlaceType
+
 from .UserDiscussionMetaData import UserDiscussionMetaData
 from .Category import Category
 from .UserCompetence import UserCompetence

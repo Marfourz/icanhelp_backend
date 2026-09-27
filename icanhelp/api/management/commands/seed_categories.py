@@ -6,10 +6,9 @@ import os
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY", "REMPLACE_PAR_TA_CLE_UNSPLASH")
 UNSPLASH_URL = "https://api.unsplash.com/photos/random"
 
-# URL de ton API Django
-API_BASE_URL = 'http://localhost:8000'
-API_LOGIN_URL = f"{API_BASE_URL}/api/token"
-API_CATEGORIES_URL = f"{API_BASE_URL}/category/"
+# URL de l'API Django ciblée (surchargeable avec --api-url, ex: https://api.skillou.com
+# pour peupler la prod depuis son poste local tout en gardant sa propre clé Unsplash)
+DEFAULT_API_BASE_URL = 'http://localhost:8000'
 
 CATEGORIES = [
     # ── Racines ──────────────────────────────────────────────────────────
@@ -75,99 +74,125 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--username', type=str, required=True, help='Username admin')
-        parser.add_argument('--password', type=str, required=True, help='Password admin')
+        parser.add_argument('--password', type=str, required=True, help='Password admin (le même sur toutes les cibles)')
         parser.add_argument('--force',    action='store_true',     help='Recréer si déjà existant')
+        parser.add_argument(
+            '--api-url', type=str, nargs='+', default=[DEFAULT_API_BASE_URL],
+            help="Une ou plusieurs bases URL à peupler en une seule passe "
+                 "(ex: --api-url http://localhost:8000 https://api.skillou.com). "
+                 "Chaque image Unsplash n'est téléchargée qu'une fois puis réutilisée pour chaque cible."
+        )
 
     def handle(self, *args, **options):
-        # 1. Login pour obtenir le token
-        token = self.get_token(options['username'], options['password'])
-        if not token:
-            self.stdout.write(self.style.ERROR("❌ Authentification échouée."))
-            return
+        # 1. Login sur chaque cible (une cible en échec est ignorée, les autres continuent)
+        targets = []
+        for api_url in options['api_url']:
+            base_url = api_url.rstrip('/')
+            login_url = f"{base_url}/api/token"
+            categories_url = f"{base_url}/category/"
 
-        headers = {"Authorization": f"Bearer {token}"}
-        created_categories = {}  # name → id
-        success, skipped, failed = 0, 0, 0
-
-        for cat in CATEGORIES:
-            # Résoudre le parent_id
-            parent_id = None
-            if cat["parent"]:
-                parent_id = created_categories.get(cat["parent"])
-                if not parent_id:
-                    self.stdout.write(self.style.ERROR(
-                        f"❌ {cat['name']} — parent '{cat['parent']}' introuvable"
-                    ))
-                    failed += 1
-                    continue
-
-            # Télécharger l'image depuis Unsplash
-            image_content, filename = self.fetch_image(cat["name"], cat["query"])
-            if not image_content:
-                failed += 1
+            token = self.get_token(login_url, options['username'], options['password'])
+            if not token:
+                self.stdout.write(self.style.ERROR(f"❌ Authentification échouée sur {base_url} — cible ignorée."))
                 continue
 
-            # Appel API pour créer la catégorie
-            try:
-                files = {"image": (filename, image_content, "image/jpeg")}
-                data = {
-                    "name":      cat["name"],
-                    "icon_name": cat["icon_name"],
-                    "color":     cat["color"],
-                }
-                if parent_id:
-                    data["parent"] = parent_id
+            self.stdout.write(self.style.SUCCESS(f"🌐 Connecté à {base_url}"))
+            targets.append({
+                "base_url": base_url,
+                "categories_url": categories_url,
+                "headers": {"Authorization": f"Bearer {token}"},
+                "created": {},  # name → id, propre à cette cible
+                "success": 0, "skipped": 0, "failed": 0,
+            })
 
-                response = requests.post(
-                    API_CATEGORIES_URL,
-                    data=data,
-                    files=files,
-                    headers=headers,
-                    timeout=15
-                )
+        if not targets:
+            self.stdout.write(self.style.ERROR("❌ Aucune cible accessible, arrêt."))
+            return
 
-                if response.status_code == 201:
-                    category_id = response.json().get("id")
-                    created_categories[cat["name"]] = category_id
-                    self.stdout.write(self.style.SUCCESS(
-                        f"✅ {cat['name']} (id={category_id})"
-                    ))
-                    success += 1
+        for cat in CATEGORIES:
+            # L'image est téléchargée une seule fois, puis réutilisée pour chaque cible
+            image_content, filename = self.fetch_image(cat["name"], cat["query"])
+            if not image_content:
+                for target in targets:
+                    target["failed"] += 1
+                continue
 
-                elif response.status_code == 400 and not options['force']:
-                    self.stdout.write(f"⏭  {cat['name']} — déjà existant")
-                    # Récupérer l'id existant pour les sous-catégories
-                    existing = self.get_existing_id(cat["name"], headers)
-                    if existing:
-                        created_categories[cat["name"]] = existing
-                    skipped += 1
-
-                else:
-                    self.stdout.write(self.style.ERROR(
-                        f"❌ {cat['name']} — {response.status_code} : {response.text}"
-                    ))
-                    failed += 1
-
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"❌ {cat['name']} — {e}"))
-                failed += 1
+            for target in targets:
+                self.create_category_on_target(target, cat, image_content, filename, options['force'])
 
         self.stdout.write("\n─────────────────────────────")
-        self.stdout.write(self.style.SUCCESS(f"✅  Créés   : {success}"))
-        self.stdout.write(self.style.WARNING(f"⏭  Ignorés : {skipped}"))
-        self.stdout.write(self.style.ERROR  (f"❌  Échecs  : {failed}"))
+        for target in targets:
+            self.stdout.write(f"\n{target['base_url']} :")
+            self.stdout.write(self.style.SUCCESS(f"  ✅  Créés   : {target['success']}"))
+            self.stdout.write(self.style.WARNING(f"  ⏭  Ignorés : {target['skipped']}"))
+            self.stdout.write(self.style.ERROR  (f"  ❌  Échecs  : {target['failed']}"))
 
-    def get_token(self, username, password):
+    def create_category_on_target(self, target, cat, image_content, filename, force):
+        # Résoudre le parent_id pour CETTE cible (les ids diffèrent d'une base à l'autre)
+        parent_id = None
+        if cat["parent"]:
+            parent_id = target["created"].get(cat["parent"])
+            if not parent_id:
+                self.stdout.write(self.style.ERROR(
+                    f"❌ [{target['base_url']}] {cat['name']} — parent '{cat['parent']}' introuvable"
+                ))
+                target["failed"] += 1
+                return
+
+        try:
+            files = {"image_upload": (filename, image_content, "image/jpeg")}
+            data = {
+                "name":      cat["name"],
+                "icon_name": cat["icon_name"],
+                "color":     cat["color"],
+            }
+            if parent_id:
+                data["parent"] = parent_id
+
+            response = requests.post(
+                target["categories_url"],
+                data=data,
+                files=files,
+                headers=target["headers"],
+                timeout=15
+            )
+
+            if response.status_code == 201:
+                category_id = response.json().get("id")
+                target["created"][cat["name"]] = category_id
+                self.stdout.write(self.style.SUCCESS(
+                    f"✅ [{target['base_url']}] {cat['name']} (id={category_id})"
+                ))
+                target["success"] += 1
+
+            elif response.status_code == 400 and not force:
+                self.stdout.write(f"⏭  [{target['base_url']}] {cat['name']} — déjà existant")
+                existing = self.get_existing_id(target, cat["name"], parent_id)
+                if existing:
+                    target["created"][cat["name"]] = existing
+                target["skipped"] += 1
+
+            else:
+                self.stdout.write(self.style.ERROR(
+                    f"❌ [{target['base_url']}] {cat['name']} — {response.status_code} : {response.text}"
+                ))
+                target["failed"] += 1
+
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"❌ [{target['base_url']}] {cat['name']} — {e}"))
+            target["failed"] += 1
+
+    def get_token(self, login_url, username, password):
         try:
             response = requests.post(
-                API_LOGIN_URL,
+                login_url,
                 data={"username": username, "password": password},
                 timeout=10
             )
             response.raise_for_status()
             return response.json().get("access") or response.json().get("token")
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f"Erreur login : {e}"))
+            self.stdout.write(self.style.ERROR(f"Erreur login sur {login_url} : {e}"))
             return None
 
     def fetch_image(self, name, query):
@@ -192,16 +217,27 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"❌ Image {name} — {e}"))
             return None, None
 
-    def get_existing_id(self, name, headers):
-        """Récupère l'id d'une catégorie existante par son nom."""
+    def get_existing_id(self, target, name, parent_id=None):
+        """
+        Récupère l'id d'une catégorie existante par son nom, sur cette cible.
+        Sans `parent`, l'API ne renvoie que les catégories racines (comportement
+        par défaut de CategoryView.get_queryset) — il faut donc le préciser pour
+        retrouver une sous-catégorie déjà existante.
+        """
         try:
+            params = {"search": name}
+            if parent_id:
+                params["parent"] = parent_id
+
             response = requests.get(
-                API_CATEGORIES_URL,
-                params={"search": name},
-                headers=headers,
+                target["categories_url"],
+                params=params,
+                headers=target["headers"],
                 timeout=10
             )
-            results = response.json()
+            payload = response.json()
+            # Réponse paginée (DRF PageNumberPagination) ou liste brute selon la config
+            results = payload.get("results", payload) if isinstance(payload, dict) else payload
             if results:
                 return results[0]["id"]
         except Exception:

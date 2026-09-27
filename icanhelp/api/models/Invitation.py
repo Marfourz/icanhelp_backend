@@ -2,11 +2,11 @@ from django.db import models
 
 
 class InvitationState(models.TextChoices):
-    PENDING = "PENDING", "En attente"
-    ACCEPTED = "ACCEPT", "Accepté"
-    REJECTED = "REJECT", "Refusé"
+    PENDING   = "PENDING",  "En attente"
+    ACCEPTED  = "ACCEPT",   "Accepté"
+    REJECTED  = "REJECT",   "Refusé"
     VALIDATED = "VALIDATE", "Terminé"
-    SCHEDULED  = "SCHEDULED",  "RDV confirmé"
+    CANCELLED = "CANCEL",   "Annulé"
 
     
 class InvitationType(models.TextChoices):
@@ -45,16 +45,17 @@ class Invitation(models.Model):
     pointsWasChange = models.BooleanField(default=False, null=True)
 
     # ── Planification ─────────────────────────────────────────
-    scheduledAt    = models.DateTimeField(blank=True, null=True)
+    scheduledAt    = models.DateTimeField()
     scheduledPlace = models.CharField(max_length=255, blank=True, null=True)
-    scheduledBy = models.ForeignKey(
-        'api.UserProfil',
-        blank=True, null=True,
-        on_delete=models.SET_NULL,
-        related_name='scheduled_invitations'
-    )
     validatedByCreator  = models.BooleanField(default=False)
     validatedByReceiver = models.BooleanField(default=False)
+
+    # ── Annulation ────────────────────────────────────────────
+    cancelledBy = models.ForeignKey(
+        'api.UserProfil', blank=True, null=True, related_name="cancelledInvitations",
+        on_delete=models.SET_NULL,
+    )
+    cancelReason = models.TextField(blank=True, default='')
 
 
 
